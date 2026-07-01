@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
+            xmlns:eli="http://data.europa.eu/eli/ontology#">
+  <act name="legge">
+    <meta>
+      <identification source="#normattiva">
+        <FRBRWork>
+          <FRBRthis value="/akn/it/act/legge/stato/1990-08-07/241/!main"/>
+          <FRBRuri value="/akn/it/act/legge/stato/1990-08-07/241"/>
+          <FRBRalias name="urn:nir" value="urn:nir:stato:legge:1990-08-07;241"/>
+          <FRBRalias name="eli" value="eli/id/1990/08/18/090G0294/CONSOLIDATED/20260421"/>
+          <FRBRdate date="1990-08-07" name="promulgazione"/>
+          <FRBRnumber value="241"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRuri value="/akn/it/act/legge/stato/1990-08-07/241/ita@2026-04-21"/>
+          <FRBRdate date="2026-04-21" name="vigenza"/>
+        </FRBRExpression>
+      </identification>
+    </meta>
+    <preface>
+      <p><docTitle>LEGGE 7 agosto 1990, n. 241</docTitle></p>
+    </preface>
+    <body>
+      <article eId="art_1">
+        <num>Art. 1.</num>
+        <heading>Principi generali dell'attivita amministrativa</heading>
+        <paragraph eId="art_1__para_1">
+          <num>1.</num>
+          <content><p>L'attivita amministrativa persegue i fini determinati dalla legge.</p></content>
+        </paragraph>
+      </article>
+      <article eId="art_2043">
+        <num>Art. 2043.</num>
+        <heading>Risarcimento per fatto illecito</heading>
+        <content><p>Qualunque fatto doloso o colposo che cagiona ad altri un danno ingiusto obbliga colui che ha commesso il fatto a risarcire il danno.</p></content>
+      </article>
+    </body>
+  </act>
+</akomaNtoso>

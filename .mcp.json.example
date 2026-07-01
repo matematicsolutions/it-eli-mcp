@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "it-eli-mcp": { "command": "it-eli-mcp" }
+  }
+}
