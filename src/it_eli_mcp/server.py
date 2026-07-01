@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import sqlite3
 
 import httpx
 from fastmcp import FastMCP
@@ -22,6 +23,14 @@ from mcp.types import ToolAnnotations
 
 from .akn import find_article, parse_akn
 from .audit import AuditLogger, hash_input, timer
+from .caselaw import db as cdb
+from .caselaw.citations import build_ecli as cc_build_ecli
+from .caselaw.citations import parse_ecli as cc_parse_ecli
+from .caselaw.models import DecisionFull as CaseDecisionFull
+from .caselaw.models import RecentItem as CaseRecentItem
+from .caselaw.models import SearchHit as CaseSearchHit
+from .caselaw.models import SearchResult as CaseSearchResult
+from .caselaw.models import Stats as CaseStats
 from .citations import build_contract, iso_to_vigenza
 from .client import NormattivaClient, NotAvailableError
 from .models import (
@@ -49,6 +58,17 @@ This MCP server exposes Italian federal legislation via Normattiva (rechtsinform
 3. `it_get_act` - fetch act metadata (title, date, ELI, article_count) for a `reference` (a code name, a URN, an ELI path, or a normattiva.it URL).
 4. `it_get_text` - fetch the text of a whole act or a single `article` (e.g. `"2043"` for art. 2043 c.c.). Pass `at_date` (ISO, e.g. `"2020-01-01"`) for the point-in-time (multivigenza) version as it stood on that date.
 
+### Constitutional case law (Corte Costituzionale)
+
+These tools run on a LOCAL full-text index of every Constitutional Court decision since 1956 (native ECLI, full reasoning + operative part), built from the Court's official open data. Scope is the Constitutional Court ONLY - not the Corte di Cassazione (subscription-gated) or the administrative courts.
+
+- `it_case_search` - full-text search over the decisions; filter by `anno` (year) and `tipologia` ('S' sentenza / 'O' ordinanza). Accent-insensitive. Returns ranked hits with ECLI, citation, snippet.
+- `it_case_get_decision` - the full text of one decision, by `ecli` (`ECLI:IT:COST:2024:1`) or by `anno` + `numero`.
+- `it_case_recent` - the most recent decisions (newest first).
+- `it_case_stats` - index coverage and freshness (totals, year range, counts by type, last build time).
+
+The case-law index must be built once with the `it-eli-mcp-caselaw-ingest` command. If these tools report `index_missing`, tell the user to run it. The legislation tools above need no such step - they fetch live.
+
 ## Hard constraints
 
 - **ELI/URN are the keys to citability** - relay `human_readable_citation` + `source_url` to the user (e.g. "Codice civile, art. 2043 - urn:nir:stato:regio.decreto:1942-03-16;262").
@@ -66,6 +86,8 @@ Tools return a structured error with a `[code]` prefix:
 - `unsupported_format` - `format` for `it_get_text` must be `text` or `akn_xml`.
 - `parse_error` - the Akoma Ntoso XML could not be parsed. Retry once, then surface.
 - `upstream_error` - a Normattiva network/HTTP error. Retry once before surfacing.
+- `index_missing` - the constitutional case-law index has not been built. Run `it-eli-mcp-caselaw-ingest`.
+- `query_error` - a case-law search query could not be parsed (e.g. empty after sanitization).
 
 ## Response style
 
@@ -85,6 +107,8 @@ class ITError(Exception):
         "unsupported_format",
         "parse_error",
         "upstream_error",
+        "index_missing",
+        "query_error",
     })
 
     def __init__(self, code: str, message: str):
@@ -373,6 +397,151 @@ async def it_get_text(
         article_count=doc.article_count(),
     )
     audit.log(tool="it_get_text", input_hash=input_hash, output_count_or_size=result.byte_size,
+              duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Constitutional case law (Corte Costituzionale) - local FTS5 index
+# ---------------------------------------------------------------------------
+
+
+def _open_caselaw() -> sqlite3.Connection:
+    try:
+        return cdb.connect(must_exist=True)
+    except cdb.DatabaseMissingError as exc:
+        raise ITError("index_missing", str(exc)) from exc
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_case_search(
+    query: str,
+    anno: str | None = None,
+    tipologia: str | None = None,
+    limit: int = 20,
+) -> CaseSearchResult:
+    """Full-text search of Corte Costituzionale (Constitutional Court) decisions.
+
+    Args:
+        query: search terms (Italian; accents are ignored by the index).
+        anno: optional year filter (e.g. "2024").
+        tipologia: optional type filter, "S" (sentenza) or "O" (ordinanza).
+        limit: max hits (1..100).
+
+    Returns:
+        ``CaseSearchResult`` with ranked ``hits`` (ecli, citation, snippet, source_url).
+    """
+    audit = _audit()
+    input_hash = hash_input({"q": query, "anno": anno, "tipologia": tipologia, "limit": limit})
+    if not 1 <= limit <= 100:
+        raise ITError("invalid_arg", f"limit={limit} out of range 1..100.")
+    with timer() as t:
+        conn = _open_caselaw()
+        try:
+            rows = cdb.search(conn, query, anno=anno, tipologia=tipologia, limit=limit)
+        except ValueError as exc:
+            audit.log(tool="it_case_search", input_hash=input_hash, output_count_or_size=0,
+                      duration_ms=t.duration_ms, status="error", error=str(exc))
+            raise ITError("query_error", str(exc)) from exc
+        finally:
+            conn.close()
+    result = CaseSearchResult(
+        query=query,
+        total_returned=len(rows),
+        hits=[CaseSearchHit.model_validate(r) for r in rows],
+    )
+    audit.log(tool="it_case_search", input_hash=input_hash, output_count_or_size=len(rows),
+              duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_case_get_decision(
+    ecli: str | None = None,
+    anno: str | None = None,
+    numero: str | None = None,
+) -> CaseDecisionFull:
+    """Fetch the full text of one Constitutional Court decision, by ECLI or year + number.
+
+    Args:
+        ecli: an ECLI, e.g. "ECLI:IT:COST:2024:1".
+        anno: year (used with ``numero`` when ``ecli`` is not given).
+        numero: decision number (used with ``anno``).
+
+    Returns:
+        ``CaseDecisionFull`` with epigrafe, testo, dispositivo and the citation contract.
+    """
+    audit = _audit()
+    input_hash = hash_input({"ecli": ecli, "anno": anno, "numero": numero})
+
+    if ecli:
+        resolved = ecli.strip()
+        if cc_parse_ecli(resolved) is None:
+            raise ITError("invalid_arg", f"Not a Constitutional-Court ECLI: {ecli!r}. "
+                                         f"Expected e.g. 'ECLI:IT:COST:2024:1'.")
+    elif anno and numero:
+        resolved = cc_build_ecli(anno.strip(), numero.strip())
+    else:
+        raise ITError("invalid_arg", "Provide either 'ecli' or both 'anno' and 'numero'.")
+
+    with timer() as t:
+        conn = _open_caselaw()
+        try:
+            row = cdb.get_by_ecli(conn, resolved)
+        finally:
+            conn.close()
+    if row is None:
+        audit.log(tool="it_case_get_decision", input_hash=input_hash, output_count_or_size=0,
+                  duration_ms=t.duration_ms, status="error", error="not_found")
+        raise ITError("not_found", f"No decision {resolved} in the case-law index.")
+    decision = CaseDecisionFull.model_validate(row)
+    audit.log(tool="it_case_get_decision", input_hash=input_hash, output_count_or_size=1,
+              duration_ms=t.duration_ms, status="ok")
+    return decision
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_case_recent(limit: int = 20) -> list[CaseRecentItem]:
+    """The most recent Constitutional Court decisions in the index (newest first).
+
+    Args:
+        limit: max items (1..100).
+    """
+    audit = _audit()
+    input_hash = hash_input({"limit": limit})
+    if not 1 <= limit <= 100:
+        raise ITError("invalid_arg", f"limit={limit} out of range 1..100.")
+    with timer() as t:
+        conn = _open_caselaw()
+        try:
+            rows = cdb.recent(conn, limit=limit)
+        finally:
+            conn.close()
+    items = [CaseRecentItem.model_validate(r) for r in rows]
+    audit.log(tool="it_case_recent", input_hash=input_hash, output_count_or_size=len(items),
+              duration_ms=t.duration_ms, status="ok")
+    return items
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_case_stats() -> CaseStats:
+    """Constitutional case-law index coverage and freshness (totals, years, last build)."""
+    audit = _audit()
+    with timer() as t:
+        conn = _open_caselaw()
+        try:
+            s = cdb.stats(conn)
+            ingested_at = cdb.get_meta(conn, "ingested_at")
+        finally:
+            conn.close()
+    result = CaseStats(
+        total=s["total"],
+        year_min=s["year_min"],
+        year_max=s["year_max"],
+        by_tipologia=s["by_tipologia"],
+        ingested_at=ingested_at,
+    )
+    audit.log(tool="it_case_stats", input_hash=hash_input({}), output_count_or_size=s["total"],
               duration_ms=t.duration_ms, status="ok")
     return result
 

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "it-eli-mcp"
-version = "0.1.0"
-description = "MCP server for Italian federal legislation via Normattiva (Akoma Ntoso / URN:NIR / ELI) — resolve, fetch and cite acts with point-in-time (multivigenza) text and verifiable ELI citations."
+version = "0.2.0"
+description = "MCP server for Italian law: federal legislation via Normattiva (Akoma Ntoso / URN:NIR / ELI, point-in-time text) and Constitutional Court (Corte Costituzionale) case law from the Court's official open data, ECLI-native."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ authors = [
     { name = "Matematic Solutions", email = "kontakt@matematic.co" },
     { name = "Wieslaw Mazur", email = "mazur.wieslaw2022@gmail.com" },
 ]
-keywords = ["mcp", "legaltech", "italy", "eli", "normattiva", "akoma-ntoso", "urn-nir", "law"]
+keywords = ["mcp", "legaltech", "italy", "eli", "ecli", "normattiva", "corte-costituzionale", "case-law", "akoma-ntoso", "urn-nir", "law"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Legal Industry",
@@ -48,6 +48,7 @@ Homepage = "https://matematic.co"
 
 [project.scripts]
 it-eli-mcp = "it_eli_mcp.server:main"
+it-eli-mcp-caselaw-ingest = "it_eli_mcp.caselaw.ingest:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/it_eli_mcp"]

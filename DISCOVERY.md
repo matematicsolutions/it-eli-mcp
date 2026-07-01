@@ -85,4 +85,25 @@ CC-BY-4.0 overlay). Architecture: a new `client.py` (session + resolver + carica
 2. **Session/cookie fragility.** If Normattiva changes the act-page markup, the `caricaAKN`
    extraction regex needs updating. Covered by the smoke tests (fail loud).
 3. **Undocumented rate-limit.** Own backoff + disk cache regardless.
-4. **Case law (Corte costituzionale / Cassazione).** Out of MVP scope - separate sub-family.
+4. **Case law (Corte costituzionale / Cassazione).** Added in v0.2.0 for the Constitutional
+   Court (see below); Cassazione stays out (subscription-gated).
+
+## Feature 002 - Constitutional case law (v0.2.0, 2026-07-01)
+
+Court-by-court probe (live):
+
+- **Corte Costituzionale = BUILT.** Official open data at `dati.cortecostituzionale.it` (the `dati.`
+  subdomain; the `www.` front sits behind a ShieldSquare/Radware bot manager, not used). Bulk
+  downloads under `/opendata/distribuzione/` as zip-of-zips (outer archive of per-year archives,
+  each one JSON file): three eras of decisions (1956-1980 / 1981-2000 / 2001-today), XML + CSV +
+  JSON. Files are cp1252/latin-1 with HTML entities. Each decision carries a native `ecli`
+  (`ECLI:IT:COST:YYYY:N`), full reasoning (`testo`), operative part (`dispositivo`), heading
+  (`epigrafe`) and metadata. Verified on `ECLI:IT:COST:1956:1`.
+- **Corte di Cassazione = OUT.** Italgiure holds 35M+ documents but is subscription-gated (free
+  only to the judiciary). Off the keyless principle.
+- **Giustizia Amministrativa = MAYBE** (search UI + ECLI, clean channel unconfirmed).
+
+Architecture: a **local SQLite FTS5 index** (the `mcp-eu-compliance` pattern), built once by
+`it-eli-mcp-caselaw-ingest` and read offline by the `it_case_*` tools. This differs from the live
+legislation tools by design, because the case law is a bulk open-data corpus, not a live API.
+Licence: official open data for reuse - confirm the exact terms before redistribution.
