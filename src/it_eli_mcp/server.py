@@ -67,7 +67,7 @@ These tools run on a LOCAL full-text index of every Constitutional Court decisio
 - `it_case_recent` - the most recent decisions (newest first).
 - `it_case_stats` - index coverage and freshness (totals, year range, counts by type, last build time).
 
-The case-law index must be built once with the `it-eli-mcp-caselaw-ingest` command. If these tools report `index_missing`, tell the user to run it. The legislation tools above need no such step - they fetch live.
+The case-law index must be built once with the `italy-eli-mcp-caselaw-ingest` command. If these tools report `index_missing`, tell the user to run it. The legislation tools above need no such step - they fetch live.
 
 ## Hard constraints
 
@@ -86,7 +86,7 @@ Tools return a structured error with a `[code]` prefix:
 - `unsupported_format` - `format` for `it_get_text` must be `text` or `akn_xml`.
 - `parse_error` - the Akoma Ntoso XML could not be parsed. Retry once, then surface.
 - `upstream_error` - a Normattiva network/HTTP error. Retry once before surfacing.
-- `index_missing` - the constitutional case-law index has not been built. Run `it-eli-mcp-caselaw-ingest`.
+- `index_missing` - the constitutional case-law index has not been built. Run `italy-eli-mcp-caselaw-ingest`.
 - `query_error` - a case-law search query could not be parsed (e.g. empty after sanitization).
 
 ## Response style

@@ -49,7 +49,7 @@ The case-law tools read a local SQLite index. Build it once (downloads the Court
 all decisions since 1956):
 
 ```bash
-it-eli-mcp-caselaw-ingest
+italy-eli-mcp-caselaw-ingest
 ```
 
 Re-run it to refresh when the Court publishes new decisions. The legislation tools need no such
@@ -99,7 +99,7 @@ Copy `.mcp.json.example`:
 ```json
 {
   "mcpServers": {
-    "it-eli-mcp": { "command": "it-eli-mcp" }
+    "it-eli-mcp": { "command": "italy-eli-mcp" }
   }
 }
 ```
