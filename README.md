@@ -1,5 +1,7 @@
 # it-eli-mcp
 
+<!-- mcp-name: io.github.matematicsolutions/it-eli-mcp -->
+
 An MCP server for **Italian law**, in two layers:
 
 - **Legislation** via [Normattiva](https://www.normattiva.it), the official portal of the
