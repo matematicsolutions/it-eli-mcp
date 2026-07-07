@@ -16,6 +16,7 @@ from __future__ import annotations
 import contextlib
 import os
 import sqlite3
+from typing import Any
 
 import httpx
 from fastmcp import FastMCP
@@ -31,6 +32,9 @@ from .caselaw.models import RecentItem as CaseRecentItem
 from .caselaw.models import SearchHit as CaseSearchHit
 from .caselaw.models import SearchResult as CaseSearchResult
 from .caselaw.models import Stats as CaseStats
+from .cassazione import client as cass_client
+from .cassazione.client import CassazioneError
+from .cassazione.models import CassDecisionFull, CassSearchHit, CassSearchResult
 from .citations import build_contract, iso_to_vigenza
 from .client import NormattivaClient, NotAvailableError
 from .models import (
@@ -69,6 +73,15 @@ These tools run on a LOCAL full-text index of every Constitutional Court decisio
 
 The case-law index must be built once with the `italy-eli-mcp-caselaw-ingest` command. If these tools report `index_missing`, tell the user to run it. The legislation tools above need no such step - they fetch live.
 
+### Supreme Court case law (Corte di Cassazione, SentenzeWeb) - LIVE, no ingest
+
+These tools query SentenzeWeb (italgiure.giustizia.it/sncass), the Court's own free public search engine, live on every call - no local index to build. This is NOT the subscription-gated ItalgiureWeb full-database search used by the judiciary and paid by practitioners; SentenzeWeb is a distinct, keyless, IODL-2.0-licensed public service covering civil and criminal decisions with full OCR text, including the Labour and Tax sub-chambers.
+
+- `it_cassazione_search` - full-text search over decision bodies (`query`), with optional `chamber` ('civile'/'penale'), `sub_chamber` ('lavoro'/'tributaria'), and `anno` filters. Returns ranked hits with a highlighted snippet.
+- `it_cassazione_get` - the full text of one decision by its SentenzeWeb `id` (returned as `sic_id` from search).
+
+Scope: Corte di Cassazione only. Consiglio di Stato and the TAR (administrative courts) are not covered - their open-data portal (Open GA) publishes only docket metadata (parties, outcome codes), not full decision text, as machine-readable bulk data.
+
 ## Hard constraints
 
 - **ELI/URN are the keys to citability** - relay `human_readable_citation` + `source_url` to the user (e.g. "Codice civile, art. 2043 - urn:nir:stato:regio.decreto:1942-03-16;262").
@@ -88,6 +101,7 @@ Tools return a structured error with a `[code]` prefix:
 - `upstream_error` - a Normattiva network/HTTP error. Retry once before surfacing.
 - `index_missing` - the constitutional case-law index has not been built. Run `italy-eli-mcp-caselaw-ingest`.
 - `query_error` - a case-law search query could not be parsed (e.g. empty after sanitization).
+- `cassazione_error` - a SentenzeWeb request failed, returned no usable JSON, or the query/id was invalid.
 
 ## Response style
 
@@ -109,6 +123,7 @@ class ITError(Exception):
         "upstream_error",
         "index_missing",
         "query_error",
+        "cassazione_error",
     })
 
     def __init__(self, code: str, message: str):
@@ -542,6 +557,94 @@ async def it_case_stats() -> CaseStats:
         ingested_at=ingested_at,
     )
     audit.log(tool="it_case_stats", input_hash=hash_input({}), output_count_or_size=s["total"],
+              duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Supreme Court case law (Corte di Cassazione) - live SentenzeWeb Solr search
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_cassazione_search(
+    query: str,
+    chamber: str | None = None,
+    sub_chamber: str | None = None,
+    anno: str | None = None,
+    limit: int = 20,
+) -> CassSearchResult:
+    """Full-text search of Corte di Cassazione (Supreme Court) decisions, live.
+
+    Queries SentenzeWeb (the Court's own free public search engine) in real time -
+    no local index. Free-text search matches the decision body (``ocr``).
+
+    Args:
+        query: search terms, matched as a phrase against the decision text.
+        chamber: optional, "civile" (civil) or "penale" (criminal).
+        sub_chamber: optional, "lavoro" (Labour) or "tributaria" (Tax) - both are
+            sub-chambers of the civil section.
+        anno: optional 4-digit year filter (decision year, e.g. "2021").
+        limit: max hits (1..100).
+
+    Returns:
+        ``CassSearchResult`` with ``total_found`` (index-wide) and ranked ``hits``
+        (sic_id, citation, snippet, source_url).
+    """
+    audit = _audit()
+    input_hash = hash_input(
+        {"q": query, "chamber": chamber, "sub_chamber": sub_chamber, "anno": anno, "limit": limit}
+    )
+    if not 1 <= limit <= 100:
+        raise ITError("invalid_arg", f"limit={limit} out of range 1..100.")
+    with timer() as t:
+        try:
+            total, decisions, highlighting = await cass_client.search(
+                query, chamber=chamber, sub_chamber=sub_chamber, anno=anno, limit=limit
+            )
+        except CassazioneError as exc:
+            audit.log(tool="it_cassazione_search", input_hash=input_hash, output_count_or_size=0,
+                      duration_ms=t.duration_ms, status="error", error=str(exc))
+            raise ITError("cassazione_error", str(exc)) from exc
+    hits = []
+    for d in decisions:
+        row: dict[str, Any] = dict(d.as_row())
+        frags = highlighting.get(d.sic_id) or highlighting.get(f"{d.kind}{d.numdec}{d.anno}") or []
+        row["snippet"] = " ... ".join(frags) if frags else (d.testo[:220] if d.testo else None)
+        hits.append(CassSearchHit.model_validate(row))
+    result = CassSearchResult(query=query, total_found=total, total_returned=len(hits), hits=hits)
+    audit.log(tool="it_cassazione_search", input_hash=input_hash, output_count_or_size=len(hits),
+              duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_cassazione_get(sic_id: str) -> CassDecisionFull:
+    """Fetch the full text of one Corte di Cassazione decision, live, by its SentenzeWeb id.
+
+    Args:
+        sic_id: the SentenzeWeb ``id`` (e.g. "snciv2024D01234O"), as returned by
+            ``it_cassazione_search`` hits.
+
+    Returns:
+        ``CassDecisionFull`` with the full OCR text, massima (summary/holding
+        extract), and the citation contract.
+    """
+    audit = _audit()
+    input_hash = hash_input({"sic_id": sic_id})
+    with timer() as t:
+        try:
+            decision = await cass_client.get_by_id(sic_id)
+        except CassazioneError as exc:
+            audit.log(tool="it_cassazione_get", input_hash=input_hash, output_count_or_size=0,
+                      duration_ms=t.duration_ms, status="error", error=str(exc))
+            raise ITError("cassazione_error", str(exc)) from exc
+    if decision is None:
+        audit.log(tool="it_cassazione_get", input_hash=input_hash, output_count_or_size=0,
+                  duration_ms=t.duration_ms, status="error", error="not_found")
+        raise ITError("not_found", f"No Cassazione decision with id {sic_id!r}.")
+    result = CassDecisionFull.model_validate(decision.as_row())
+    audit.log(tool="it_cassazione_get", input_hash=input_hash, output_count_or_size=1,
               duration_ms=t.duration_ms, status="ok")
     return result
 

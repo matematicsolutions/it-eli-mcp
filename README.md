@@ -10,6 +10,9 @@ An MCP server for **Italian law**, in two layers:
   keyless.
 - **Constitutional case law** (Corte Costituzionale): a local, keyless full-text index of every
   decision since 1956, each with its native **ECLI**, built from the Court's official open data.
+- **Supreme Court case law** (Corte di Cassazione): live, keyless full-text search over SentenzeWeb,
+  the Court's own free public search engine - civil and criminal decisions, full OCR text, no local
+  index to build.
 
 Italy has the EU's largest legal profession by headcount - roughly 240,000 lawyers per CCBE
 figures, ahead of Germany and Spain. No live, keyless MCP connector covered its statute book. This
@@ -28,6 +31,14 @@ Italian source.
 > acts on request, with attribution and a `source_url`; it does not bulk-harvest the database
 > (Normattiva's terms restrict that). Every response carries a `dataset_note`. (A practitioner's
 > read, not formal legal advice.)
+>
+> **Cassazione is NOT Italgiure/ItalgiureWeb.** The Court's full-database search
+> (ItalgiureWeb, 35M+ documents) is free only for the judiciary; practitioners pay a
+> subscription. This connector does **not** use that service. It queries **SentenzeWeb**
+> (`italgiure.giustizia.it/sncass`), a **separate, free, public** search engine the Court
+> itself publishes, under the **Italian Open Data License (IODL 2.0)**, with no authentication
+> - verified live during development (see `DISCOVERY.md`). Coverage is narrower than the full
+> Italgiure database but real: 420K+ civil and criminal decisions with full OCR text.
 
 ## Legislation tools (Normattiva, live)
 
@@ -55,8 +66,26 @@ italy-eli-mcp-caselaw-ingest
 ```
 
 Re-run it to refresh when the Court publishes new decisions. The legislation tools need no such
-step; they fetch live. Scope is the Constitutional Court only - not the Corte di Cassazione
-(subscription-gated) or the administrative courts.
+step; they fetch live.
+
+## Supreme Court case-law tools (Corte di Cassazione, SentenzeWeb, live)
+
+| Tool | What it does |
+|---|---|
+| `it_cassazione_search` | Full-text search over decision bodies. Filters: `chamber` ('civile'/'penale'), `sub_chamber` ('lavoro'/'tributaria'), `anno` (year). Returns ranked hits with a highlighted snippet. |
+| `it_cassazione_get` | The full text of one decision by its SentenzeWeb `sic_id` (from a search hit). |
+
+No ingest step - every call queries SentenzeWeb live. Coverage: civil (`snciv`, ~190K) and
+criminal (`snpen`, ~238K) decisions, including the Labour (`szdec:L`, ~30K) and Tax (`szdec:5`,
+~59K) sub-chambers, full OCR text.
+
+Scope is Corte di Cassazione only. Consiglio di Stato and the TAR (administrative courts) were
+evaluated and NOT implemented: their open-data portal (Open GA,
+`openga.giustizia-amministrativa.it`, CKAN) publishes only docket metadata (case numbers, parties,
+outcome codes) in bulk CSV/JSON - not full decision text as structured, bulk-fetchable data. Full
+texts do exist on `portali.giustizia-amministrativa.it` but behind a per-decision URL pattern
+(`nomeFile=<fascicolo>_<doctype-code>.html`) whose doctype-code segment is not derivable from the
+docket metadata alone, so a reliable search+get tool isn't buildable from open data today.
 
 Every legislation response carries the citation contract: `eli_uri` (e.g.
 `eli/id/1990/08/18/090G0294/CONSOLIDATED`), `urn` (e.g. `urn:nir:stato:legge:1990-08-07;241`),
@@ -85,6 +114,13 @@ it_get_text(reference="codice civile", article="2043")
 
 it_get_text(reference="codice privacy", article="1", at_date="2010-01-01")
 → the privacy code's art. 1 as it stood on 1 January 2010
+
+it_cassazione_search(query="responsabilita medica", chamber="civile", limit=5)
+→ {total_found: 81177, hits: [{sic_id: "snciv2025224393O",
+   citation: "Cass. civ., ord. n. 24393/2025", snippet: "...", source_url: "..."}, ...]}
+
+it_cassazione_get(sic_id="snciv2025224393O")
+→ {citation: "Cass. civ., ord. n. 24393/2025", testo: "...", massima: "...", source_url: "..."}
 ```
 
 ## Install
@@ -118,7 +154,7 @@ Environment:
 ```bash
 pip install -e ".[dev]"
 pytest -m "not smoke"   # offline (URN, Akoma Ntoso parser, case-law index, drift)
-pytest -m smoke         # live: Normattiva + the Corte Costituzionale open data
+pytest -m smoke         # live: Normattiva + Corte Costituzionale open data + SentenzeWeb
 ```
 
 ## Audit trail
