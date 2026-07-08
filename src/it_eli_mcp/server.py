@@ -37,6 +37,9 @@ from .cassazione.client import CassazioneError
 from .cassazione.models import CassDecisionFull, CassSearchHit, CassSearchResult
 from .citations import build_contract, iso_to_vigenza
 from .client import NormattivaClient, NotAvailableError
+from .giustizia_amministrativa import client as ga_client
+from .giustizia_amministrativa.client import GaError
+from .giustizia_amministrativa.models import GaDecisionFull, GaSearchHit, GaSearchResult
 from .models import (
     ActInfo,
     ActText,
@@ -80,7 +83,12 @@ These tools query SentenzeWeb (italgiure.giustizia.it/sncass), the Court's own f
 - `it_cassazione_search` - full-text search over decision bodies (`query`), with optional `chamber` ('civile'/'penale'), `sub_chamber` ('lavoro'/'tributaria'), and `anno` filters. Returns ranked hits with a highlighted snippet.
 - `it_cassazione_get` - the full text of one decision by its SentenzeWeb `id` (returned as `sic_id` from search).
 
-Scope: Corte di Cassazione only. Consiglio di Stato and the TAR (administrative courts) are not covered - their open-data portal (Open GA) publishes only docket metadata (parties, outcome codes), not full decision text, as machine-readable bulk data.
+### Administrative case law (Consiglio di Stato, C.G.A.R.S., TAR) - LIVE, no ingest
+
+These tools query the Giustizia Amministrativa portal's own public decision search (www.giustizia-amministrativa.it) live on every call - keyless, no local index. One backend covers the WHOLE administrative jurisdiction: Consiglio di Stato (501K+ provvedimenti), C.G.A.R.S. (Sicily, 53K+) and the 29 regional TAR seats - 3.4M+ decisions portal-wide. Search hits carry the court's NATIVE ECLI (e.g. `ECLI:IT:CDS:2026:5450SENT`); never invent one.
+
+- `it_ga_search` - full-text search (`query`) and/or decision-number lookup (`numero`), with optional `sede` ('Consiglio di Stato', 'C.G.A.R.S', or a TAR seat city like 'Roma'/'Milano'), `tipo` ('sentenza'/'ordinanza'/'decreto'/'parere'/'plenaria'), and `anno`. `sede`, `tipo` and `numero` filter server-side; `anno` is applied client-side over the returned page (the portal's own year field is a no-op), so for an exact lookup pass `numero` + `anno` + `sede`. Returns newest-first hits with ECLI, citation, snippet and `document_url`.
+- `it_ga_get_decision` - the full text of one decision by its `document_url` (take it verbatim from a search hit). Hits with `document_format` 'xml' return machine-readable full text; a few provvedimenti are published PDF-only ('pdf') - for those, relay the `document_url` to the user instead of quoting text.
 
 ## Hard constraints
 
@@ -102,6 +110,7 @@ Tools return a structured error with a `[code]` prefix:
 - `index_missing` - the constitutional case-law index has not been built. Run `italy-eli-mcp-caselaw-ingest`.
 - `query_error` - a case-law search query could not be parsed (e.g. empty after sanitization).
 - `cassazione_error` - a SentenzeWeb request failed, returned no usable JSON, or the query/id was invalid.
+- `ga_error` - a giustizia-amministrativa.it request failed, the response did not match the known portal layout, or an argument (sede/tipo/numero/anno/document_url) was invalid.
 
 ## Response style
 
@@ -124,6 +133,7 @@ class ITError(Exception):
         "index_missing",
         "query_error",
         "cassazione_error",
+        "ga_error",
     })
 
     def __init__(self, code: str, message: str):
@@ -646,6 +656,112 @@ async def it_cassazione_get(sic_id: str) -> CassDecisionFull:
     result = CassDecisionFull.model_validate(decision.as_row())
     audit.log(tool="it_cassazione_get", input_hash=input_hash, output_count_or_size=1,
               duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Administrative case law (Consiglio di Stato / C.G.A.R.S. / TAR) - live portal
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_ga_search(
+    query: str | None = None,
+    sede: str | None = None,
+    tipo: str | None = None,
+    numero: str | None = None,
+    anno: str | None = None,
+    limit: int = 20,
+) -> GaSearchResult:
+    """Search Italian administrative case law (Consiglio di Stato, C.G.A.R.S., TAR), live.
+
+    Queries the Giustizia Amministrativa portal's own public decision search in
+    real time - one backend for the whole administrative jurisdiction (3.4M+
+    provvedimenti). Provide a full-text ``query``, a decision ``numero``, or both.
+
+    Args:
+        query: full-text search terms, matched against the decision text.
+        sede: optional court seat - "Consiglio di Stato", "C.G.A.R.S", or a TAR
+            seat city ("Roma", "Milano", "Napoli", ...). Filters server-side.
+        tipo: optional - "sentenza", "ordinanza", "decreto", "parere",
+            "plenaria" (Adunanza Plenaria). Filters server-side.
+        numero: optional decision number (1-5 digits) for an exact lookup.
+            Filters server-side; combine with ``anno`` + ``sede`` to pin one
+            decision.
+        anno: optional 4-digit publication year. Applied CLIENT-SIDE over the
+            returned page (the portal's year field is a no-op upstream);
+            ``total_found`` stays the upstream, year-unfiltered total.
+        limit: max hits (1..60; the portal serves pages of 20/40/60, newest first).
+
+    Returns:
+        ``GaSearchResult`` with ``total_found`` (upstream) and hits carrying the
+        NATIVE ECLI, citation, snippet and ``document_url``.
+    """
+    audit = _audit()
+    input_hash = hash_input(
+        {"q": query, "sede": sede, "tipo": tipo, "numero": numero, "anno": anno, "limit": limit}
+    )
+    if not 1 <= limit <= 60:
+        raise ITError("invalid_arg", f"limit={limit} out of range 1..60.")
+    with timer() as t:
+        try:
+            total, ga_hits = await ga_client.search(
+                query, sede=sede, tipo=tipo, numero=numero, anno=anno, limit=limit
+            )
+        except GaError as exc:
+            audit.log(tool="it_ga_search", input_hash=input_hash, output_count_or_size=0,
+                      duration_ms=t.duration_ms, status="error", error=str(exc))
+            raise ITError("ga_error", str(exc)) from exc
+    hits = []
+    for h in ga_hits:
+        row: dict[str, Any] = dict(h.as_row())
+        row["source_url"] = h.document_url
+        hits.append(GaSearchHit.model_validate(row))
+    result = GaSearchResult(
+        query=query, total_found=total, total_returned=len(hits), hits=hits
+    )
+    audit.log(tool="it_ga_search", input_hash=input_hash, output_count_or_size=len(hits),
+              duration_ms=t.duration_ms, status="ok")
+    return result
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def it_ga_get_decision(document_url: str) -> GaDecisionFull:
+    """Fetch the full text of one administrative decision, live, by its document URL.
+
+    Args:
+        document_url: the ``document_url`` of an ``it_ga_search`` hit, verbatim
+            (an ``https://mdp.giustizia-amministrativa.it/visualizza/?...`` URL).
+
+    Returns:
+        ``GaDecisionFull`` with the full decision text (epigrafe through
+        dispositivo), the portal's own URN and registry coordinates, and the
+        citation contract.
+    """
+    audit = _audit()
+    input_hash = hash_input({"document_url": document_url})
+    with timer() as t:
+        try:
+            doc = await ga_client.get_document(document_url)
+        except GaError as exc:
+            audit.log(tool="it_ga_get_decision", input_hash=input_hash, output_count_or_size=0,
+                      duration_ms=t.duration_ms, status="error", error=str(exc))
+            raise ITError("ga_error", str(exc)) from exc
+    citation = (
+        f"{doc.tipologia} n. {doc.numero}/{doc.anno}"
+        if doc.tipologia and doc.numero and doc.anno
+        else None
+    )
+    result = GaDecisionFull.model_validate(
+        {
+            **doc.as_row(),
+            "citation": citation,
+            "document_url": document_url,
+            "source_url": document_url,
+        }
+    )
+    audit.log(tool="it_ga_get_decision", input_hash=input_hash,
+              output_count_or_size=len(doc.testo), duration_ms=t.duration_ms, status="ok")
     return result
 
 

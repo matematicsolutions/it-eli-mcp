@@ -198,3 +198,40 @@ The LDH manifest also lists `IT/ConsiglioDiStato` (`status: complete`, `auth: no
   half-working tool. Revisit if Open GA ever adds the doctype code to its bulk export, or if TAR
   decisions (same portal family) turn out to have a more deterministic URL pattern.
 Licence: official open data for reuse - confirm the exact terms before redistribution.
+
+## Consiglio di Stato / Giustizia Amministrativa - REJECTION REVERSED, built (2026-07-08)
+
+The 2026-07-07 parking verdict above assumed the only entry points were the Open GA bulk export
+(metadata-only) and a hand-derived `nomeFile` URL. Re-check (feature-004 widen round, STALE-REJ
+policy) found the missing piece: the portal's OWN public decision search supplies the full
+`nomeFile=..._NN.html` segment for every hit, so a reliable search -> full-text path exists
+without guessing doctype suffixes. Transcript of the live verification (2026-07-08, re-probed at
+ship time the same day):
+
+- Search backend: Liferay portlet at `https://www.giustizia-amministrativa.it/web/guest/dcsnprr`.
+  Plain HTTP, keyless: `GET` the page -> session cookie + `p_auth` CSRF token embedded in the HTML;
+  `POST` the same URL with `p_p_id=decisioni_pareri_web_DecisioniPareriWebPortlet_INSTANCE_XKc17mrB8J10`,
+  `javax.portlet.action=search` and the form fields -> server-rendered HTML, one
+  `<article class="ricerca--item">` per hit with the mdp full-text URL, a NATIVE ECLI
+  (e.g. `ECLI:IT:CDS:2026:5268SENT`), sede/sezione/numero metadata and a snippet.
+- Corpus totals from the portal's own `Trovati <strong>N</strong> risultati` field (empty search):
+  3 419 429 provvedimenti portal-wide; sede-filtered: Consiglio di Stato 501 034, C.G.A.R.S. 53 215;
+  plus all 29 TAR seats. One backend = the whole administrative jurisdiction.
+- Filter honesty (verified by comparing totals, after a day that caught three silent filter no-ops
+  in other APIs): query `espropriazione` -> 28 412 all seats, 5 667 CdS, 886 TAR Milano,
+  404 CdS+`tipo=ordinanza` - `sede`, `tipo` and `numero` genuinely narrow server-side.
+  The portal's year field and pagination ARE silent no-ops on this action URL: `anno` is therefore
+  applied client-side (deterministic - the decision id is `YYYYNNNNN`, year first) and only the
+  first page (newest first, pageSize 20/40/60) is served.
+- Full text: the hit's mdp URL, e.g.
+  `https://mdp.giustizia-amministrativa.it/visualizza/?nodeRef=&schema=cds&nrg=202500402&nomeFile=202605268_11.html&subDir=Provvedimenti`
+  -> structured GA XML (`<GA><Provvedimento>` with `meta/descrittori` registry coordinates and the
+  body in epigrafe..dispositivo sections; sample fetch: Sentenza 05268/2026, published 2026-07-01,
+  21 620 chars extracted). A few provvedimenti are PDF-only (`nomeFile=..._NN.pdf`); those are
+  flagged `document_format: pdf` and their text is not extracted.
+- Licence: Italian official legal texts are outside copyright (art. 5, l. 633/1941); no TDM
+  reservation found on the portal. The connector relays individual decisions live on request, it
+  does not bulk-harvest.
+
+Shipped as `src/it_eli_mcp/giustizia_amministrativa/` with tools `it_ga_search` /
+`it_ga_get_decision` (v0.4.0).

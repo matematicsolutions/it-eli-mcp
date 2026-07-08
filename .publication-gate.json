@@ -1,0 +1,9 @@
+{
+  "allow_paths": [
+    "tests/fixtures/",
+    "tests/test_cassazione_citations.py",
+    "tests/test_cassazione_records.py",
+    "tests/test_ga_citations.py"
+  ],
+  "note": "Fixtures and citation tests contain verbatim public Italian court identifiers: SentenzeWeb ids and Giustizia Amministrativa decision ids (YYYYNNNNN, e.g. 202605450) trigger Polish NIP/REGON lookalike patterns - foreign public docket numbers, not PII. Same precedent as de-eli-mcp / us-eli-mcp."
+}

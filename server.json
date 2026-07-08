@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.matematicsolutions/it-eli-mcp",
-  "description": "Italian law: Normattiva legislation (ELI), Corte Costituzionale case law (ECLI), and Corte di Cassazione case law (SentenzeWeb, live).",
-  "version": "0.3.0",
+  "description": "Italian law: Normattiva legislation (ELI), Corte Costituzionale case law (ECLI), Corte di Cassazione case law (SentenzeWeb, live), and Consiglio di Stato / TAR administrative case law (Giustizia Amministrativa, live).",
+  "version": "0.4.0",
   "repository": {
     "url": "https://github.com/matematicsolutions/it-eli-mcp",
     "source": "github"
@@ -12,7 +12,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "italy-eli-mcp",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

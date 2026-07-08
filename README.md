@@ -13,6 +13,9 @@ An MCP server for **Italian law**, in two layers:
 - **Supreme Court case law** (Corte di Cassazione): live, keyless full-text search over SentenzeWeb,
   the Court's own free public search engine - civil and criminal decisions, full OCR text, no local
   index to build.
+- **Administrative case law** (Consiglio di Stato, C.G.A.R.S., TAR): live, keyless search over the
+  Giustizia Amministrativa portal's own public decision search - one backend for the whole
+  administrative jurisdiction, 3.4M+ provvedimenti with native ECLI and structured full text.
 
 Italy has the EU's largest legal profession by headcount - roughly 240,000 lawyers per CCBE
 figures, ahead of Germany and Spain. No live, keyless MCP connector covered its statute book. This
