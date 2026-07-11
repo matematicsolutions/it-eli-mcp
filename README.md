@@ -61,15 +61,21 @@ Italian source.
 | `it_case_recent` | The most recent decisions (newest first). |
 | `it_case_stats` | Index coverage: total decisions, year range, counts by type, last build time. |
 
-The case-law tools read a local SQLite index. Build it once (downloads the Court's open data -
-all decisions since 1956):
+The case-law tools read a local SQLite index that is **provisioned automatically on the first
+call** - no setup step. On first use the server downloads a pre-built `cost.sqlite` (sha256-verified)
+from the release, or, if none is published, builds it from the Court's open data (all decisions
+since 1956); the index is then cached under `~/.matematic` and every later call queries it offline.
+`it_case_stats` reports `provenance` and `ingested_at` so you can see how fresh it is.
+
+To refresh, or to pre-build it ahead of time (e.g. in an offline deployment), run:
 
 ```bash
 italy-eli-mcp-caselaw-ingest
 ```
 
-Re-run it to refresh when the Court publishes new decisions. The legislation tools need no such
-step; they fetch live.
+Tuning env vars: `IT_ELI_CASELAW_INDEX_URL` (override/disable the pre-built download),
+`IT_ELI_CASELAW_INDEX_SHA256` (pin the checksum), `IT_ELI_CASELAW_AUTOBUILD=0` (skip the
+automatic local build). The legislation tools need no index; they fetch live.
 
 ## Supreme Court case-law tools (Corte di Cassazione, SentenzeWeb, live)
 
@@ -151,6 +157,9 @@ Environment:
 - `IT_ELI_CACHE_DIR` - default `~/.matematic/cache/it-eli`
 - `IT_ELI_AUDIT_DIR` - default `~/.matematic/audit`
 - `IT_ELI_CASELAW_DB` - constitutional case-law index path (default `~/.matematic/data/it-eli-caselaw/cost.sqlite`)
+- `IT_ELI_CASELAW_INDEX_URL` - pre-built index download URL (default: the GitHub release asset; `''` disables)
+- `IT_ELI_CASELAW_INDEX_SHA256` - pin the expected index checksum instead of fetching the `.sha256` sidecar
+- `IT_ELI_CASELAW_AUTOBUILD` - `0` to skip the automatic local build (prefer the `index_missing` error)
 
 ## Tests
 

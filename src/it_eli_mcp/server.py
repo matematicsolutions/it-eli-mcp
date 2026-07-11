@@ -24,6 +24,7 @@ from mcp.types import ToolAnnotations
 
 from .akn import find_article, parse_akn
 from .audit import AuditLogger, hash_input, timer
+from .caselaw import corpus as ccorpus
 from .caselaw import db as cdb
 from .caselaw.citations import build_ecli as cc_build_ecli
 from .caselaw.citations import parse_ecli as cc_parse_ecli
@@ -74,7 +75,7 @@ These tools run on a LOCAL full-text index of every Constitutional Court decisio
 - `it_case_recent` - the most recent decisions (newest first).
 - `it_case_stats` - index coverage and freshness (totals, year range, counts by type, last build time).
 
-The case-law index must be built once with the `italy-eli-mcp-caselaw-ingest` command. If these tools report `index_missing`, tell the user to run it. The legislation tools above need no such step - they fetch live.
+The index is provisioned AUTOMATICALLY on the first `it_case_*` call (a pre-built index is downloaded and sha256-verified, or built from the Court's open data if none is published) and cached under `~/.matematic`; there is no manual step. `it_case_stats` reports `provenance` and `ingested_at` so you can state the index's freshness. The `index_missing` error appears only if every provisioning path fails (e.g. no network on a fresh machine); then `italy-eli-mcp-caselaw-ingest` builds it manually. The legislation tools above fetch live and need no index.
 
 ### Supreme Court case law (Corte di Cassazione, SentenzeWeb) - LIVE, no ingest
 
@@ -107,7 +108,7 @@ Tools return a structured error with a `[code]` prefix:
 - `unsupported_format` - `format` for `it_get_text` must be `text` or `akn_xml`.
 - `parse_error` - the Akoma Ntoso XML could not be parsed. Retry once, then surface.
 - `upstream_error` - a Normattiva network/HTTP error. Retry once before surfacing.
-- `index_missing` - the constitutional case-law index has not been built. Run `italy-eli-mcp-caselaw-ingest`.
+- `index_missing` - automatic provisioning of the constitutional case-law index failed (no cached index, the pre-built asset was unreachable, and the local build could not run - typically no network). Retry when online, or run `italy-eli-mcp-caselaw-ingest` to build it manually.
 - `query_error` - a case-law search query could not be parsed (e.g. empty after sanitization).
 - `cassazione_error` - a SentenzeWeb request failed, returned no usable JSON, or the query/id was invalid.
 - `ga_error` - a giustizia-amministrativa.it request failed, the response did not match the known portal layout, or an argument (sede/tipo/numero/anno/document_url) was invalid.
@@ -431,11 +432,17 @@ async def it_get_text(
 # ---------------------------------------------------------------------------
 
 
-def _open_caselaw() -> sqlite3.Connection:
+async def _open_caselaw() -> sqlite3.Connection:
+    """Lazily provision the index on first use, then open it for a read-only query.
+
+    ``ensure_index`` downloads a verified pre-built index or builds it from the Court's
+    open data; only if every provisioning path fails do we surface ``index_missing``.
+    """
     try:
-        return cdb.connect(must_exist=True)
+        path = await ccorpus.ensure_index()
     except cdb.DatabaseMissingError as exc:
         raise ITError("index_missing", str(exc)) from exc
+    return cdb.connect(path, must_exist=True)
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -461,7 +468,7 @@ async def it_case_search(
     if not 1 <= limit <= 100:
         raise ITError("invalid_arg", f"limit={limit} out of range 1..100.")
     with timer() as t:
-        conn = _open_caselaw()
+        conn = await _open_caselaw()
         try:
             rows = cdb.search(conn, query, anno=anno, tipologia=tipologia, limit=limit)
         except ValueError as exc:
@@ -510,7 +517,7 @@ async def it_case_get_decision(
         raise ITError("invalid_arg", "Provide either 'ecli' or both 'anno' and 'numero'.")
 
     with timer() as t:
-        conn = _open_caselaw()
+        conn = await _open_caselaw()
         try:
             row = cdb.get_by_ecli(conn, resolved)
         finally:
@@ -537,7 +544,7 @@ async def it_case_recent(limit: int = 20) -> list[CaseRecentItem]:
     if not 1 <= limit <= 100:
         raise ITError("invalid_arg", f"limit={limit} out of range 1..100.")
     with timer() as t:
-        conn = _open_caselaw()
+        conn = await _open_caselaw()
         try:
             rows = cdb.recent(conn, limit=limit)
         finally:
@@ -553,10 +560,11 @@ async def it_case_stats() -> CaseStats:
     """Constitutional case-law index coverage and freshness (totals, years, last build)."""
     audit = _audit()
     with timer() as t:
-        conn = _open_caselaw()
+        conn = await _open_caselaw()
         try:
             s = cdb.stats(conn)
             ingested_at = cdb.get_meta(conn, "ingested_at")
+            provenance = cdb.get_meta(conn, "provenance")
         finally:
             conn.close()
     result = CaseStats(
@@ -565,6 +573,7 @@ async def it_case_stats() -> CaseStats:
         year_max=s["year_max"],
         by_tipologia=s["by_tipologia"],
         ingested_at=ingested_at,
+        provenance=provenance,
     )
     audit.log(tool="it_case_stats", input_hash=hash_input({}), output_count_or_size=s["total"],
               duration_ms=t.duration_ms, status="ok")

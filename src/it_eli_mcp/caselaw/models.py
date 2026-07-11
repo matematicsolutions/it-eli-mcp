@@ -6,9 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 DATASET_NOTE = (
     "Source: Corte Costituzionale official open data (dati.cortecostituzionale.it) - "
-    "every decision since 1956, ECLI-native, public for reuse. This is a LOCAL index "
-    "built by 'it-cost-mcp-ingest'; run ingest to refresh. Scope: the Italian "
-    "Constitutional Court only - not the Corte di Cassazione or administrative courts."
+    "every decision since 1956, ECLI-native, public for reuse. This is a LOCAL index, "
+    "provisioned automatically on first use (a sha256-verified pre-built index or a build "
+    "from the open data) and cached under ~/.matematic; see 'provenance'/'ingested_at' in "
+    "it_case_stats for freshness, and run 'italy-eli-mcp-caselaw-ingest' to refresh. Scope: "
+    "the Italian Constitutional Court only - not the Corte di Cassazione or administrative courts."
 )
 
 
@@ -68,4 +70,5 @@ class Stats(_Tolerant):
     year_max: int | None = None
     by_tipologia: dict[str, int] = Field(default_factory=dict)
     ingested_at: str | None = None
+    provenance: str | None = None
     dataset_note: str = DATASET_NOTE
