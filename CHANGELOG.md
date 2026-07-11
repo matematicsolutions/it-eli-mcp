@@ -3,6 +3,21 @@
 All notable changes to `italy-eli-mcp` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses [SemVer](https://semver.org/).
 
+## [0.5.1] - 2026-07-11
+
+### Added
+- **Fast-path release asset.** `release.yml` now builds the Corte Costituzionale index in CI,
+  gzips it, and attaches `cost.sqlite.gz` + `cost.sqlite.gz.sha256` to each release. The lazy
+  download path (step 2 of the provisioning ladder) picks it up automatically, so a fresh
+  install fetches a small, sha256-verified pre-built index in seconds instead of building the
+  ~100 MB of open data locally. The build path remains the fallback when the asset is absent.
+
+### Changed
+- `corpus.ensure_index()` now handles a gzipped asset: the checksum is verified against the
+  downloaded `.gz`, which is then stream-decompressed (constant memory) before install. The
+  default `IT_ELI_CASELAW_INDEX_URL` points at `…/cost.sqlite.gz`; a plain `.sqlite` URL still
+  works (the `.gz` suffix drives decompression).
+
 ## [0.5.0] - 2026-07-11
 
 ### Changed

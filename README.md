@@ -62,10 +62,12 @@ Italian source.
 | `it_case_stats` | Index coverage: total decisions, year range, counts by type, last build time. |
 
 The case-law tools read a local SQLite index that is **provisioned automatically on the first
-call** - no setup step. On first use the server downloads a pre-built `cost.sqlite` (sha256-verified)
-from the release, or, if none is published, builds it from the Court's open data (all decisions
-since 1956); the index is then cached under `~/.matematic` and every later call queries it offline.
-`it_case_stats` reports `provenance` and `ingested_at` so you can see how fresh it is.
+call** - no setup step. On first use the server downloads a small, sha256-verified pre-built
+`cost.sqlite.gz` from the GitHub release (built and attached by CI on each release) and
+decompresses it, or, if none is published, builds the index from the Court's open data (all
+decisions since 1956); the index is then cached under `~/.matematic` and every later call
+queries it offline. `it_case_stats` reports `provenance` and `ingested_at` so you can see how
+fresh it is.
 
 To refresh, or to pre-build it ahead of time (e.g. in an offline deployment), run:
 

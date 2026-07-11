@@ -36,6 +36,44 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
+  build-and-upload-caselaw-index:
+    # Ships a pre-built Corte Costituzionale index as a release asset so a fresh install
+    # gets the fast lazy-download path instead of building from the open data locally.
+    # Independent of the PyPI job: if the Court's open data is unreachable, the package
+    # still publishes and clients fall back to the local build.
+    if: github.event_name == 'push'   # only on a version tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the release / upload assets
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package
+        run: python -m pip install .
+
+      - name: Build the case-law index from the Court's open data
+        run: italy-eli-mcp-caselaw-ingest --db cost.sqlite --quiet
+
+      - name: Compress + checksum
+        run: |
+          gzip -9 -k cost.sqlite
+          sha256sum cost.sqlite.gz > cost.sqlite.gz.sha256
+          ls -lh cost.sqlite cost.sqlite.gz
+
+      - name: Attach the index to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --title "$TAG" --generate-notes \
+            cost.sqlite.gz cost.sqlite.gz.sha256 \
+          || gh release upload "$TAG" cost.sqlite.gz cost.sqlite.gz.sha256 --clobber
+
   publish-mcp-registry:
     needs: build-and-publish-pypi
     # run after a successful PyPI publish, OR standalone on manual dispatch

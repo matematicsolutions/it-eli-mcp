@@ -23,9 +23,11 @@ Provenance and freshness are stamped into the ``meta`` table and surfaced by
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import os
 import re
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -34,11 +36,12 @@ import httpx
 
 from . import db, ingest
 
-# Pre-built index published as a GitHub release asset. The "latest" download URL
-# self-activates the moment a release carrying cost.sqlite + cost.sqlite.sha256 is cut;
-# until then the download simply 404s and we fall through to the local build.
+# Pre-built index published as a GitHub release asset (gzipped to keep the download small).
+# The "latest" download URL self-activates the moment a release carrying cost.sqlite.gz +
+# its .sha256 is cut; until then the download simply 404s and we fall through to the local
+# build. A plain (non-.gz) URL is also supported - the .gz suffix drives decompression.
 DEFAULT_INDEX_URL = (
-    "https://github.com/matematicsolutions/it-eli-mcp/releases/latest/download/cost.sqlite"
+    "https://github.com/matematicsolutions/it-eli-mcp/releases/latest/download/cost.sqlite.gz"
 )
 USER_AGENT = "it-eli-caselaw-mcp (+https://github.com/matematicsolutions/it-eli-mcp)"
 _DOWNLOAD_TIMEOUT = httpx.Timeout(300.0, connect=15.0)
@@ -102,10 +105,12 @@ def _is_ready(path: Path) -> bool:
 async def _download_verified_asset(url: str, target: Path) -> None:
     """Download the pre-built index and verify its sha256 before installing it atomically.
 
-    We refuse to install an index we cannot verify: if no checksum is available (env
-    ``IT_ELI_CASELAW_INDEX_SHA256`` or a ``<url>.sha256`` sidecar), this raises and the
+    The checksum is verified against the bytes actually downloaded (the ``.gz`` if the URL
+    is gzipped). We refuse to install an index we cannot verify: if no checksum is available
+    (env ``IT_ELI_CASELAW_INDEX_SHA256`` or a ``<url>.sha256`` sidecar), this raises and the
     caller falls back to building from the official source data.
     """
+    dl_path = target.with_suffix(target.suffix + ".download")
     async with httpx.AsyncClient(
         timeout=_DOWNLOAD_TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT}
     ) as client:
@@ -114,21 +119,33 @@ async def _download_verified_asset(url: str, target: Path) -> None:
             raise RuntimeError(
                 "no sha256 checksum available; refusing to install an unverified index"
             )
-        tmp_path = target.with_suffix(target.suffix + ".part")
         digest = hashlib.sha256()
         async with client.stream("GET", url) as resp:
             resp.raise_for_status()
-            with tmp_path.open("wb") as fh:
+            with dl_path.open("wb") as fh:
                 async for chunk in resp.aiter_bytes():
                     fh.write(chunk)
                     digest.update(chunk)
         actual = digest.hexdigest()
         if actual.lower() != expected.lower():
-            tmp_path.unlink(missing_ok=True)
+            dl_path.unlink(missing_ok=True)
             raise RuntimeError(f"sha256 mismatch: expected {expected}, got {actual}")
 
+    # Decompress if gzipped, then install atomically.
+    tmp_path = target.with_suffix(target.suffix + ".part")
+    if url.endswith(".gz"):
+        await anyio.to_thread.run_sync(_gunzip, dl_path, tmp_path)
+        dl_path.unlink(missing_ok=True)
+    else:
+        os.replace(dl_path, tmp_path)
     _stamp_provenance(tmp_path, f"release-asset ({url})")
     os.replace(tmp_path, target)
+
+
+def _gunzip(src: Path, dst: Path) -> None:
+    """Stream-decompress a gzip file (constant memory, handles multi-hundred-MB indexes)."""
+    with gzip.open(src, "rb") as fin, dst.open("wb") as fout:
+        shutil.copyfileobj(fin, fout, length=1024 * 1024)
 
 
 async def _expected_sha256(client: httpx.AsyncClient, url: str) -> str | None:

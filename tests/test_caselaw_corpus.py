@@ -8,6 +8,7 @@ touching the network or the ~100 MB official dumps.
 from __future__ import annotations
 
 import functools
+import gzip
 import hashlib
 import http.server
 import socketserver
@@ -99,6 +100,39 @@ async def test_download_verified_asset_over_http(target, monkeypatch, tmp_path):
         path = await corpus.ensure_index()
         assert path == target and path.exists()
 
+        conn = db.connect(path)
+        try:
+            assert db.stats(conn)["total"] == 2
+            assert db.get_meta(conn, "provenance").startswith("release-asset")
+        finally:
+            conn.close()
+    finally:
+        httpd.shutdown()
+        thread.join(timeout=5)
+
+
+async def test_download_gzip_asset_is_decompressed(target, monkeypatch, tmp_path):
+    """A gzipped release asset is verified (sha of the .gz) and decompressed on install."""
+    served = tmp_path / "release"
+    served.mkdir()
+    raw = tmp_path / "cost.sqlite"
+    _build_small_index(raw)
+    gz = served / "cost.sqlite.gz"
+    gz.write_bytes(gzip.compress(raw.read_bytes()))
+    sha = hashlib.sha256(gz.read_bytes()).hexdigest()
+    (served / "cost.sqlite.gz.sha256").write_text(f"{sha}  cost.sqlite.gz\n", encoding="utf-8")
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(served))
+    httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = httpd.server_address[1]
+        monkeypatch.setenv("IT_ELI_CASELAW_INDEX_URL", f"http://127.0.0.1:{port}/cost.sqlite.gz")
+        monkeypatch.setenv("IT_ELI_CASELAW_AUTOBUILD", "0")
+
+        path = await corpus.ensure_index()
+        assert path == target and path.exists()
         conn = db.connect(path)
         try:
             assert db.stats(conn)["total"] == 2
