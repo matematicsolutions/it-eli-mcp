@@ -3,6 +3,31 @@
 All notable changes to `italy-eli-mcp` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses [SemVer](https://semver.org/).
 
+## [0.6.0] - 2026-07-13
+
+### Added
+- **`it_verify_citations` - anti-hallucination citation verification.** Extracts Italian legal
+  citations from any text (statutes: `art. 2043 c.c.`, `art. 5 della legge 241/1990`,
+  `artt. 1341 e 1342 c.c.`, commi; case law: `ECLI:IT:COST:*`) and verifies each against its
+  source: statutes against the live Normattiva act, article by article; Constitutional Court
+  ECLIs against the local index. A missing article returns a range hint of what does exist. A
+  parenthetical description after a citation is content-checked with a character-trigram match
+  (mismatch = review signal, not a block). Hard semantics: any non-existent citation makes the
+  result `HALLUCINATION_DETECTED` with `isError=true`; a text without citations returns
+  `NO_CITATIONS_FOUND`, explicitly not a success. Everything unverifiable lands in a structured
+  `gaps` field (`out_of_corpus` / `unparseable_citation` / `act_unresolvable` /
+  `upstream_unavailable` / `comma_not_checkable`) instead of being hidden in prose. Pattern
+  adapted from chrisryugj/korean-law-mcp (MIT) - see `THIRD_PARTY.md`.
+- `THIRD_PARTY.md` with the korean-law-mcp attribution.
+- `tests/test_verify.py`, `tests/test_verify_tool.py` (offline, fixture acts) and
+  `tests/test_verify_smoke.py` (live Normattiva).
+
+### Changed
+- `fastmcp` dependency floor raised to `>=3.4` (`ToolResult.is_error` is needed to deliver the
+  hallucination verdict as a tool-level error without losing the structured result).
+- README: documented the administrative case-law tools (`it_ga_search`,
+  `it_ga_get_decision`), which shipped in 0.4.0 but were still described as not implemented.
+
 ## [0.5.1] - 2026-07-11
 
 ### Added

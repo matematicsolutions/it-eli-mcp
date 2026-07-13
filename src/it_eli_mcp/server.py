@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
 from mcp.types import ToolAnnotations
 
 from .akn import find_article, parse_akn
@@ -44,12 +45,17 @@ from .giustizia_amministrativa.models import GaDecisionFull, GaSearchHit, GaSear
 from .models import (
     ActInfo,
     ActText,
+    CitationCheck,
+    CitationVerificationResult,
     CodeEntry,
+    ContentMatch,
     ResolveQuery,
     ResolveResult,
     TextFormat,
+    VerificationGap,
 )
 from .urn import CODES, NORMATTIVA_BASE, UrnRef, build_urn, entry_url, parse_urn
+from .verify import ParsedCitation, detect_commi, match_claim, parse_citations, range_hint
 
 INSTRUCTIONS = """\
 This MCP server exposes Italian federal legislation via Normattiva (rechtsinformationen's Italian counterpart), the official portal of the Ministero della Giustizia. Italy is the EU's largest legal market by number of lawyers. There is no JSON API: acts are fetched as Akoma Ntoso XML through a session-bound flow, and every response carries the citation contract - `eli_uri` (read from the act's ELI), `urn` (URN:NIR), `human_readable_citation`, `source_url` - plus a `dataset_note`.
@@ -90,6 +96,16 @@ These tools query the Giustizia Amministrativa portal's own public decision sear
 
 - `it_ga_search` - full-text search (`query`) and/or decision-number lookup (`numero`), with optional `sede` ('Consiglio di Stato', 'C.G.A.R.S', or a TAR seat city like 'Roma'/'Milano'), `tipo` ('sentenza'/'ordinanza'/'decreto'/'parere'/'plenaria'), and `anno`. `sede`, `tipo` and `numero` filter server-side; `anno` is applied client-side over the returned page (the portal's own year field is a no-op), so for an exact lookup pass `numero` + `anno` + `sede`. Returns newest-first hits with ECLI, citation, snippet and `document_url`.
 - `it_ga_get_decision` - the full text of one decision by its `document_url` (take it verbatim from a search hit). Hits with `document_format` 'xml' return machine-readable full text; a few provvedimenti are published PDF-only ('pdf') - for those, relay the `document_url` to the user instead of quoting text.
+
+### Citation verification (anti-hallucination)
+
+- `it_verify_citations` - extract Italian statute citations ("art. 2043 c.c.", "art. 5 della legge 241/1990", "artt. 1341 e 1342 c.c.", commi) and Constitutional Court ECLIs from any text (a drafted answer, a memo, a contract clause) and verify each against the backing source: statutes against the live Normattiva act, article by article; `ECLI:IT:COST:*` against the local Constitutional Court index. A parenthetical description right after a citation ("art. 2043 c.c. (risarcimento per fatto illecito)") is additionally content-checked against the real provision text (trigram match; a mismatch is a review signal, not a block).
+
+Hard semantics - do not soften them:
+- Result status `HALLUCINATION_DETECTED` (delivered with isError=true): at least one cited article does not exist in the cited act; a range hint states what DOES exist ("art. 9999 does not exist; the act has 372 articles, numbered art. 1-372"). NEVER report "verification complete" or "citations verified" on this result - report the citation errors to the user explicitly.
+- Result status `NO_CITATIONS_FOUND`: the text contains no checkable citations. This is NOT a verification success - it is the absence of anything to verify.
+- Every reference the tool could not check is listed in the structured `gaps` field (out_of_corpus / unparseable_citation / act_unresolvable / upstream_unavailable / comma_not_checkable). Relay the gaps instead of implying full coverage.
+- Cassazione and administrative-court ECLIs are out of the local corpus; verify those via `it_cassazione_search` / `it_ga_search` instead.
 
 ## Hard constraints
 
@@ -772,6 +788,306 @@ async def it_ga_get_decision(document_url: str) -> GaDecisionFull:
     audit.log(tool="it_ga_get_decision", input_hash=input_hash,
               output_count_or_size=len(doc.testo), duration_ms=t.duration_ms, status="ok")
     return result
+
+
+# ---------------------------------------------------------------------------
+# it_verify_citations - anti-hallucination citation check
+# (parse-verify-report loop adapted from chrisryugj/korean-law-mcp, MIT;
+#  see THIRD_PARTY.md)
+# ---------------------------------------------------------------------------
+
+_STATUS_MARK = {
+    "verified": "[OK]",
+    "not_found": "[MISSING]",
+    "content_mismatch": "[CHECK]",
+    "unverified": "[CHECK]",
+}
+
+
+def _statute_reference(cite: ParsedCitation) -> str | None:
+    """Resolvable reference (CODES key or URN) for a parsed statute citation."""
+    if cite.code_key:
+        return cite.code_key
+    if cite.act_type and cite.act_number and cite.act_year:
+        return build_urn(
+            cite.act_type, cite.act_year, cite.act_number,
+            month=cite.act_month, day=cite.act_day,
+        )
+    return None
+
+
+async def _fetch_act_doc(client: NormattivaClient, reference: str):
+    """Fetch + parse one act for verification. Module-level for testability."""
+    xml, _src = await client.get_akn(entry_url(reference))
+    return parse_akn(xml)
+
+
+async def _verify_statute(
+    cite: ParsedCitation,
+    client: NormattivaClient,
+    doc_cache: dict[str, Any],
+    gaps: list[VerificationGap],
+) -> CitationCheck:
+    reference = _statute_reference(cite)
+    if reference is None:
+        gap_type = "act_unresolvable" if (cite.act_type or cite.code_key) else "unparseable_citation"
+        gaps.append(VerificationGap(
+            gap_type=gap_type, citation=cite.raw,
+            note="No act with resolvable coordinates found next to the article number; "
+                 "name the act explicitly (e.g. 'art. 5 della legge 241/1990').",
+        ))
+        return CitationCheck(
+            raw=cite.raw, kind="statute", article=cite.article, comma=cite.comma,
+            status="unverified",
+            detail=f"[CHECK] {cite.raw} - no act identifiable in context; not verified.",
+        )
+
+    if reference not in doc_cache:
+        try:
+            doc_cache[reference] = await _fetch_act_doc(client, reference)
+        except NotAvailableError as exc:
+            doc_cache[reference] = exc
+        except (httpx.HTTPStatusError, httpx.TransportError, httpx.TimeoutException) as exc:
+            doc_cache[reference] = exc
+        except ValueError as exc:  # entry_url or AKN parse failure
+            doc_cache[reference] = exc
+    doc = doc_cache[reference]
+
+    if isinstance(doc, NotAvailableError):
+        gaps.append(VerificationGap(
+            gap_type="out_of_corpus", citation=cite.raw,
+            note=f"Normattiva exposes no machine-readable act for {reference!r}: the act may "
+                 f"not exist or may not be exportable. Existence is UNKNOWN, not disproven.",
+        ))
+        return CitationCheck(
+            raw=cite.raw, kind="statute", act_reference=reference,
+            article=cite.article, comma=cite.comma, status="unverified",
+            detail=f"[CHECK] {cite.raw} - act not resolvable on Normattiva; verify the act coordinates.",
+        )
+    if isinstance(doc, Exception):
+        gaps.append(VerificationGap(
+            gap_type="upstream_unavailable", citation=cite.raw,
+            note=f"Normattiva fetch failed for {reference!r}: {type(doc).__name__}. Retry later.",
+        ))
+        return CitationCheck(
+            raw=cite.raw, kind="statute", act_reference=reference,
+            article=cite.article, comma=cite.comma, status="unverified",
+            detail=f"[CHECK] {cite.raw} - upstream fetch failed; not verified.",
+        )
+
+    urn_str = CODES[reference]["urn"] if reference in CODES else reference
+    urn_ref: UrnRef | None = None
+    with contextlib.suppress(ValueError):
+        urn_ref = parse_urn(doc.urn or urn_str)
+    contract = build_contract(doc, urn_ref, base_url=_base_url())
+    act_label = contract["human_readable_citation"] or reference
+    human = f"{act_label}, art. {cite.article}"
+
+    art = find_article(doc, cite.article or "")
+    if art is None:
+        hint = range_hint([a.num or "" for a in doc.articles], cite.article or "?")
+        return CitationCheck(
+            raw=cite.raw, kind="statute", act_reference=urn_str,
+            article=cite.article, comma=cite.comma, status="not_found",
+            detail=f"[MISSING] {human} - {hint}",
+            range_hint=hint,
+            human_readable_citation=human, source_url=contract["source_url"],
+        )
+
+    status = "verified"
+    notes: list[str] = []
+    content_match: ContentMatch | None = None
+
+    if cite.claim:
+        matched, method, score = match_claim(cite.claim, art.heading, art.text)
+        content_match = ContentMatch(matched=matched, method=method, score=score)
+        if not matched:
+            status = "content_mismatch"
+            actual = art.heading or (art.text[:80] + "...")
+            notes.append(
+                f"claimed description {cite.claim!r} does not match the real provision "
+                f"({actual!r}; {method} score {score}). Review signal, not a block."
+            )
+
+    if cite.comma:
+        commi = detect_commi(art.text)
+        comma_base = cite.comma.split("-")[0]
+        if not commi:
+            gaps.append(VerificationGap(
+                gap_type="comma_not_checkable", citation=cite.raw,
+                note=f"{human}: the article exists but its commi are not machine-detectable "
+                     f"in the flattened text; comma {cite.comma} was NOT checked.",
+            ))
+            notes.append(f"comma {cite.comma} not machine-checkable")
+        elif comma_base.isdigit() and int(comma_base) not in commi:
+            if status == "verified":
+                status = "unverified"
+            notes.append(
+                f"comma {cite.comma} not found among detected commi 1-{max(commi)} "
+                f"(flattened text; review signal)"
+            )
+
+    mark = _STATUS_MARK[status]
+    heading = f" ({art.heading})" if art.heading else ""
+    suffix = f" - {'; '.join(notes)}" if notes else ""
+    return CitationCheck(
+        raw=cite.raw, kind="statute", act_reference=urn_str,
+        article=cite.article, comma=cite.comma, status=status,
+        detail=f"{mark} {human}{heading} - article exists{suffix}",
+        claim=cite.claim, content_match=content_match,
+        human_readable_citation=human, source_url=contract["source_url"],
+    )
+
+
+async def _verify_ecli(cite: ParsedCitation, gaps: list[VerificationGap]) -> CitationCheck:
+    if cite.ecli_court != "COST":
+        gaps.append(VerificationGap(
+            gap_type="out_of_corpus", citation=cite.raw,
+            note=f"{cite.ecli}: only ECLI:IT:COST is covered by the local index. Verify "
+                 f"Cassazione via it_cassazione_search and administrative courts via it_ga_search.",
+        ))
+        return CitationCheck(
+            raw=cite.raw, kind="caselaw_other", status="unverified",
+            detail=f"[CHECK] {cite.ecli} - outside the local corpus; not verified here.",
+        )
+    try:
+        conn = await _open_caselaw()
+    except ITError as exc:
+        gaps.append(VerificationGap(
+            gap_type="upstream_unavailable", citation=cite.raw,
+            note=f"Constitutional Court index unavailable: {exc}",
+        ))
+        return CitationCheck(
+            raw=cite.raw, kind="constitutional_caselaw", status="unverified",
+            detail=f"[CHECK] {cite.ecli} - local index unavailable; not verified.",
+        )
+    try:
+        row = cdb.get_by_ecli(conn, cite.ecli or "")
+    finally:
+        conn.close()
+    if row is None:
+        hint = "no such decision in the Constitutional Court index (complete since 1956)"
+        return CitationCheck(
+            raw=cite.raw, kind="constitutional_caselaw", status="not_found",
+            detail=f"[MISSING] {cite.ecli} - {hint}.",
+            range_hint=hint,
+        )
+    return CitationCheck(
+        raw=cite.raw, kind="constitutional_caselaw", status="verified",
+        detail=f"[OK] {cite.ecli} - exists ({row.get('citation') or 'decision found'}).",
+        human_readable_citation=row.get("citation"), source_url=row.get("source_url"),
+    )
+
+
+def _verification_report(result: CitationVerificationResult) -> str:
+    lines = [
+        f"[{result.status}] == Citation verification ==",
+        f"Total {result.total} | OK {result.verified_count} | "
+        f"MISSING {result.failed_count} | CHECK {result.warning_count}",
+        "",
+    ]
+    lines += [c.detail for c in result.citations]
+    if result.gaps:
+        lines.append("")
+        lines.append("Gaps (not covered by this verification):")
+        lines += [f"- [{g.gap_type}] {g.note}" for g in result.gaps]
+    if result.status == "HALLUCINATION_DETECTED":
+        lines += [
+            "",
+            f"[HALLUCINATION_DETECTED] {result.failed_count} citation(s) do not exist in the "
+            f"cited source. They are likely invented. Report the citation errors to the user "
+            f"explicitly and correct the text.",
+            "NEVER report 'verification complete' or 'citations verified' for this result.",
+        ]
+    if result.status == "NO_CITATIONS_FOUND":
+        lines += [
+            "",
+            "[NO_CITATIONS_FOUND] This is NOT a verification success - there were no citations "
+            "to verify. Supported patterns: 'art. 2043 c.c.', 'art. 5 della legge 241/1990', "
+            "'ECLI:IT:COST:2024:1'. Re-run with text that contains citations.",
+        ]
+    return "\n".join(lines)
+
+
+@mcp.tool(annotations=READ_ONLY, output_schema=CitationVerificationResult.model_json_schema())
+async def it_verify_citations(text: str, max_citations: int = 15) -> ToolResult:
+    """Verify Italian legal citations found in a text against their real sources.
+
+    Extracts statute citations ("art. 2043 c.c.", "art. 5 della legge 241/1990",
+    "artt. 1341 e 1342 c.c.", commi) and ECLIs, then checks each: statutes
+    against the live Normattiva act (does the act resolve? does the article
+    exist?), ECLI:IT:COST against the local Constitutional Court index. A
+    parenthetical description right after a citation is content-checked with a
+    trigram match (mismatch = review signal). Non-existent articles come back
+    with a range hint of what DOES exist.
+
+    Args:
+        text: the text to verify (an LLM answer, a memo, a contract clause).
+        max_citations: cap on citations to verify (1..30, default 15).
+
+    Returns:
+        ``CitationVerificationResult`` (structured): per-citation checks plus a
+        ``gaps`` list of everything the tool could NOT verify. When any cited
+        article does not exist the result is HALLUCINATION_DETECTED and the
+        response carries isError=true.
+    """
+    audit = _audit()
+    input_hash = hash_input({"text": text, "max_citations": max_citations})
+    if not 1 <= max_citations <= 30:
+        raise ITError("invalid_arg", f"max_citations={max_citations} out of range 1..30.")
+
+    with timer() as t:
+        cites = parse_citations(text, max_citations=max_citations)
+        checks: list[CitationCheck] = []
+        gaps: list[VerificationGap] = []
+        if cites:
+            doc_cache: dict[str, Any] = {}
+            async with NormattivaClient(base_url=_base_url()) as client:
+                for cite in cites:
+                    if cite.kind == "statute":
+                        checks.append(await _verify_statute(cite, client, doc_cache, gaps))
+                    else:
+                        checks.append(await _verify_ecli(cite, gaps))
+
+    verified = sum(1 for c in checks if c.status == "verified")
+    failed = sum(1 for c in checks if c.status == "not_found")
+    warnings = sum(1 for c in checks if c.status in ("content_mismatch", "unverified"))
+
+    if not checks:
+        status = "NO_CITATIONS_FOUND"
+        summary = ("No checkable citations found in the input text. "
+                   "This is NOT a verification success.")
+    elif failed > 0:
+        status = "HALLUCINATION_DETECTED"
+        summary = (f"{failed} of {len(checks)} citation(s) do not exist in the cited source. "
+                   f"NEVER report 'verification complete' for this result.")
+    elif warnings > 0:
+        status = "PARTIAL_VERIFIED"
+        summary = (f"{verified} of {len(checks)} citation(s) verified; {warnings} need review "
+                   f"(see details and gaps).")
+    else:
+        status = "VERIFIED"
+        summary = f"All {verified} citation(s) exist in their cited sources."
+
+    result = CitationVerificationResult(
+        status=status, summary=summary,
+        total=len(checks), verified_count=verified,
+        failed_count=failed, warning_count=warnings,
+        citations=checks, gaps=gaps,
+    )
+    # The tool call itself succeeded; a detected hallucination is a RESULT, not a
+    # tool error. It is still recorded (greppable) via the error field.
+    audit.log(
+        tool="it_verify_citations", input_hash=input_hash,
+        output_count_or_size=len(checks), duration_ms=t.duration_ms,
+        status="ok",
+        error=None if failed == 0 else f"hallucination_detected: {failed} citation(s)",
+    )
+    return ToolResult(
+        content=_verification_report(result),
+        structured_content=result,
+        is_error=(status == "HALLUCINATION_DETECTED"),
+    )
 
 
 def main() -> None:

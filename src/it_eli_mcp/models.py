@@ -87,3 +87,67 @@ class ResolveQuery(_Tolerant):
     month: int | None = Field(default=None, ge=1, le=12)
     day: int | None = Field(default=None, ge=1, le=31)
     authority: str = "stato"
+
+
+# ---------------------------------------------------------------------------
+# it_verify_citations
+# ---------------------------------------------------------------------------
+
+CitationStatus = Literal["verified", "not_found", "content_mismatch", "unverified"]
+VerificationStatus = Literal[
+    "VERIFIED", "PARTIAL_VERIFIED", "HALLUCINATION_DETECTED", "NO_CITATIONS_FOUND"
+]
+GapType = Literal[
+    "out_of_corpus",          # the reference cannot be checked against any backing source
+    "unparseable_citation",   # an article number with no recognizable act in context
+    "act_unresolvable",       # act named, but no coordinates a URN can be built from
+    "upstream_unavailable",   # Normattiva / the local index could not be reached
+    "comma_not_checkable",    # article exists but its commi are not machine-detectable
+]
+
+
+class ContentMatch(_Tolerant):
+    """Trigram comparison of a claimed description against the real provision."""
+
+    matched: bool
+    method: Literal["exact", "trigram-jaccard", "trigram-overlap"]
+    score: float
+
+
+class CitationCheck(_Tolerant):
+    """Verification outcome for one citation found in the input text."""
+
+    raw: str
+    kind: Literal["statute", "constitutional_caselaw", "caselaw_other"]
+    act_reference: str | None = None
+    article: str | None = None
+    comma: str | None = None
+    status: CitationStatus
+    detail: str
+    range_hint: str | None = None
+    claim: str | None = None
+    content_match: ContentMatch | None = None
+    human_readable_citation: str | None = None
+    source_url: str | None = None
+
+
+class VerificationGap(_Tolerant):
+    """An explicit incompleteness of the verification - never hidden in prose."""
+
+    gap_type: GapType
+    citation: str | None = None
+    note: str
+
+
+class CitationVerificationResult(_Tolerant):
+    """Result of ``it_verify_citations``."""
+
+    status: VerificationStatus
+    summary: str
+    total: int
+    verified_count: int
+    failed_count: int
+    warning_count: int
+    citations: list[CitationCheck] = Field(default_factory=list)
+    gaps: list[VerificationGap] = Field(default_factory=list)
+    dataset_note: str = DATASET_NOTE

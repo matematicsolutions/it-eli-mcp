@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "italy-eli-mcp"
-version = "0.5.1"
+version = "0.6.0"
 description = "MCP server for Italian law: federal legislation via Normattiva (Akoma Ntoso / URN:NIR / ELI, point-in-time text), Constitutional Court (Corte Costituzionale) case law from the Court's official open data (ECLI-native), Supreme Court (Corte di Cassazione) case law via the Court's free public SentenzeWeb search, and administrative case law (Consiglio di Stato, C.G.A.R.S., TAR) via the Giustizia Amministrativa portal search, live."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Office/Business",
 ]
 dependencies = [
-    "fastmcp>=0.2.0",
+    "fastmcp>=3.4",
     "httpx>=0.27",
     "pydantic>=2.6",
     "diskcache>=5.6",

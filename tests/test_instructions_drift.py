@@ -28,7 +28,8 @@ def _registered_tool_names() -> set[str]:
         tools_dict = getattr(mcp._tool_manager, "_tools", {})
         if tools_dict:
             return set(tools_dict.keys())
-    return set(re.findall(r"@mcp\.tool\([^)]*\)\s+async def (\w+)", SRC))
+    # Non-greedy across nested parens: `@mcp.tool(..., output_schema=Model.model_json_schema())`
+    return set(re.findall(r"@mcp\.tool\(.*?\)\s*\nasync def (\w+)", SRC, re.DOTALL))
 
 
 def _referenced_tool_names_in_instructions() -> set[str]:

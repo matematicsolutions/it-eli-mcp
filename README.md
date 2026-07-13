@@ -90,13 +90,55 @@ No ingest step - every call queries SentenzeWeb live. Coverage: civil (`snciv`, 
 criminal (`snpen`, ~238K) decisions, including the Labour (`szdec:L`, ~30K) and Tax (`szdec:5`,
 ~59K) sub-chambers, full OCR text.
 
-Scope is Corte di Cassazione only. Consiglio di Stato and the TAR (administrative courts) were
-evaluated and NOT implemented: their open-data portal (Open GA,
-`openga.giustizia-amministrativa.it`, CKAN) publishes only docket metadata (case numbers, parties,
-outcome codes) in bulk CSV/JSON - not full decision text as structured, bulk-fetchable data. Full
-texts do exist on `portali.giustizia-amministrativa.it` but behind a per-decision URL pattern
-(`nomeFile=<fascicolo>_<doctype-code>.html`) whose doctype-code segment is not derivable from the
-docket metadata alone, so a reliable search+get tool isn't buildable from open data today.
+## Administrative case-law tools (Consiglio di Stato, C.G.A.R.S., TAR, live)
+
+| Tool | What it does |
+|---|---|
+| `it_ga_search` | Full-text search and/or decision-number lookup over the Giustizia Amministrativa portal - one backend for the whole administrative jurisdiction (3.4M+ provvedimenti). Filters: `sede`, `tipo`, `numero`, `anno`. Hits carry the court's native ECLI. |
+| `it_ga_get_decision` | The full text of one decision by its `document_url` (taken verbatim from a search hit). |
+
+No ingest step - every call queries the portal's own public decision search live.
+
+## Citation verification (anti-hallucination)
+
+| Tool | What it does |
+|---|---|
+| `it_verify_citations` | Extracts Italian legal citations from any text (a drafted answer, a memo, a contract clause) and verifies each one against its source. Statute citations (`art. 2043 c.c.`, `art. 5 della legge 241/1990`, `artt. 1341 e 1342 c.c.`, commi) are checked against the live Normattiva act, article by article; `ECLI:IT:COST:*` citations are checked against the local Constitutional Court index. |
+
+What it reports, per citation and overall:
+
+- **Existence with a range hint.** A cited article that does not exist comes back as `not_found`
+  with a hint of what does exist: `art. 9999 does not exist in this act; the act has 372
+  articles, numbered art. 1-372`.
+- **Optional content check.** A parenthetical description right after a citation
+  (`art. 2043 c.c. (risarcimento per fatto illecito)`) is compared with the real provision using
+  a character-trigram match. A mismatch is a review signal (`content_mismatch`), never a hard
+  block - paraphrase is legitimate.
+- **Hard semantics.** When any cited article does not exist, the result status is
+  `HALLUCINATION_DETECTED` and the tool response carries `isError=true`, so a calling model
+  cannot mistake it for a passed check. When the text contains no citations at all, the status
+  is `NO_CITATIONS_FOUND` - explicitly NOT a verification success.
+- **Structured `gaps`.** Everything the tool could not verify is listed as a typed gap
+  (`out_of_corpus`, `unparseable_citation`, `act_unresolvable`, `upstream_unavailable`,
+  `comma_not_checkable`) instead of being hidden in prose. An act Normattiva cannot resolve is a
+  gap, not a hallucination: existence is unknown, not disproven. Cassazione and
+  administrative-court ECLIs are out of the local corpus; verify those with
+  `it_cassazione_search` / `it_ga_search`.
+
+```
+it_verify_citations(text="L'art. 2043 c.c. e l'art. 9999 della legge 241/1990 si applicano.")
+→ status: "HALLUCINATION_DETECTED" (isError=true)
+  citations: [
+    {raw: "art. 2043 c.c.", status: "verified", ...},
+    {raw: "art. 9999 della legge 241/1990", status: "not_found",
+     range_hint: "art. 9999 does not exist in this act; the act has <N> articles, ..."}
+  ]
+  gaps: []
+```
+
+The parse-verify-report loop is adapted from `chrisryugj/korean-law-mcp` (MIT) - see
+`THIRD_PARTY.md`. The content matcher uses character trigrams (the Korean original uses bigrams,
+which fit an agglutinative script; trigrams discriminate better for Italian).
 
 Every legislation response carries the citation contract: `eli_uri` (e.g.
 `eli/id/1990/08/18/090G0294/CONSOLIDATED`), `urn` (e.g. `urn:nir:stato:legge:1990-08-07;241`),
