@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from mcp.types import ToolAnnotations
 
 from .akn import find_article, parse_akn
