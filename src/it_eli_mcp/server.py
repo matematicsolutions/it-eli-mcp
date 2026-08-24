@@ -110,6 +110,7 @@ Hard semantics - do not soften them:
 
 ## Hard constraints
 
+- **Do not answer past the edge of this corpus** - when a search comes back empty, or the question touches material this connector does not carry, call `it_coverage` and relay what it says is missing. Absence here is not absence in the law.
 - **ELI/URN are the keys to citability** - relay `human_readable_citation` + `source_url` to the user (e.g. "Codice civile, art. 2043 - urn:nir:stato:regio.decreto:1942-03-16;262").
 - **No modification of official text** - the act is returned verbatim from Normattiva, only whitespace-normalized.
 - **Point-in-time** - without `at_date` the text is the version in force TODAY (consolidated). Say which version you quoted.
