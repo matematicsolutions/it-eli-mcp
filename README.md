@@ -104,6 +104,7 @@ No ingest step - every call queries the portal's own public decision search live
 | Tool | What it does |
 |---|---|
 | `it_verify_citations` | Extracts Italian legal citations from any text (a drafted answer, a memo, a contract clause) and verifies each one against its source. Statute citations (`art. 2043 c.c.`, `art. 5 della legge 241/1990`, `artt. 1341 e 1342 c.c.`, commi) are checked against the live Normattiva act, article by article; `ECLI:IT:COST:*` citations are checked against the local Constitutional Court index. |
+| `it_coverage` | Declare what this connector covers, when each family was captured, and - explicitly - what it does NOT cover. Every gap carries a fallback. |
 
 What it reports, per citation and overall:
 

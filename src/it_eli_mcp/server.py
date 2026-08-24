@@ -56,6 +56,7 @@ from .models import (
 )
 from .urn import CODES, NORMATTIVA_BASE, UrnRef, build_urn, entry_url, parse_urn
 from .verify import ParsedCitation, detect_commi, match_claim, parse_citations, range_hint
+from .coverage import Coverage, build_coverage
 
 INSTRUCTIONS = """\
 This MCP server exposes Italian federal legislation via Normattiva (rechtsinformationen's Italian counterpart), the official portal of the Ministero della Giustizia. Italy is the EU's largest legal market by number of lawyers. There is no JSON API: acts are fetched as Akoma Ntoso XML through a session-bound flow, and every response carries the citation contract - `eli_uri` (read from the act's ELI), `urn` (URN:NIR), `human_readable_citation`, `source_url` - plus a `dataset_note`.
@@ -794,6 +795,20 @@ async def it_ga_get_decision(document_url: str) -> GaDecisionFull:
 # it_verify_citations - anti-hallucination citation check
 # (parse-verify-report loop adapted from chrisryugj/korean-law-mcp, MIT;
 #  see THIRD_PARTY.md)
+@mcp.tool(annotations=READ_ONLY)
+async def it_coverage() -> Coverage:
+    """Declare what this connector covers, how it is sourced, and what it does NOT cover.
+
+    Call this before telling a user that the law "does not contain" something, and whenever
+    a search comes back empty: the absence may be a gap in this connector rather than in the
+    law. Every gap carries a fallback saying where to look instead.
+
+    Returns:
+        ``Coverage`` with families, an as-of note, and a non-empty list of known gaps.
+    """
+    return build_coverage()
+
+
 # ---------------------------------------------------------------------------
 
 _STATUS_MARK = {
