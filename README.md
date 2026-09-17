@@ -239,7 +239,7 @@ pytest -m smoke         # live: Normattiva + Corte Costituzionale open data + Se
 ## Audit trail
 
 Every tool call appends one JSON line to `~/.matematic/audit/it-eli-mcp.jsonl` (timestamp, tool,
-input hash, output size, duration, status) for AI Act art. 12 record-keeping. No raw query text is
+input hash, output size, duration, status) for record-keeping. No raw query text is
 stored.
 
 ## Licence
