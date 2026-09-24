@@ -1,0 +1,2353 @@
+{
+  "package_version": "0.7.3",
+  "tools": {
+    "it_case_get_decision": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Fetch the full text of one Constitutional Court decision, by ECLI or year + number.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "year (used with ``numero`` when ``ecli`` is not given)."
+            },
+            "ecli": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "an ECLI, e.g. \"ECLI:IT:COST:2024:1\"."
+            },
+            "numero": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "decision number (used with ``anno``)."
+            }
+          },
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_case_get_decision",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "collegio": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "data_decisione": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "data_deposito": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "dataset_note": {
+              "default": "Source: Corte Costituzionale official open data (dati.cortecostituzionale.it) - every decision since 1956, ECLI-native, public for reuse. This is a LOCAL index, provisioned automatically on first use (a sha256-verified pre-built index or a build from the open data) and cached under ~/.matematic; see 'provenance'/'ingested_at' in it_case_stats for freshness, and run 'italy-eli-mcp-caselaw-ingest' to refresh. Scope: the Italian Constitutional Court only - not the Corte di Cassazione or administrative courts.",
+              "type": "string"
+            },
+            "dispositivo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "ecli": {
+              "type": "string"
+            },
+            "epigrafe": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "numero": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "presidente": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "relatore": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "testo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "tipologia_label": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "ecli"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "a19dd51ec61b8a974e3ab6098934c326ff96998e215f3f42e7aa66c7c6ef6c91"
+    },
+    "it_case_recent": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "The most recent Constitutional Court decisions in the index (newest first).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 20,
+              "description": "max items (1..100).",
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_case_recent",
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "anno": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "data_deposito": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "ecli": {
+                    "type": "string"
+                  },
+                  "numero": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "source_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tipologia_label": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "ecli"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "type": "object",
+          "x-fastmcp-wrap-result": true
+        }
+      },
+      "sha256": "943d5b24fc7725e6a1767d1c8baf11a7785e507bd8662191ae967140767b824b"
+    },
+    "it_case_search": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Full-text search of Corte Costituzionale (Constitutional Court) decisions.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional year filter (e.g. \"2024\")."
+            },
+            "limit": {
+              "default": 20,
+              "description": "max hits (1..100).",
+              "type": "integer"
+            },
+            "query": {
+              "description": "search terms (Italian; accents are ignored by the index).",
+              "type": "string"
+            },
+            "tipologia": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional type filter, \"S\" (sentenza) or \"O\" (ordinanza)."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_case_search",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "dataset_note": {
+              "default": "Source: Corte Costituzionale official open data (dati.cortecostituzionale.it) - every decision since 1956, ECLI-native, public for reuse. This is a LOCAL index, provisioned automatically on first use (a sha256-verified pre-built index or a build from the open data) and cached under ~/.matematic; see 'provenance'/'ingested_at' in it_case_stats for freshness, and run 'italy-eli-mcp-caselaw-ingest' to refresh. Scope: the Italian Constitutional Court only - not the Corte di Cassazione or administrative courts.",
+              "type": "string"
+            },
+            "hits": {
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "anno": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "data_deposito": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "ecli": {
+                    "type": "string"
+                  },
+                  "numero": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "snippet": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "source_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tipologia_label": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "ecli"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "query": {
+              "type": "string"
+            },
+            "total_returned": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query",
+            "total_returned"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "dfff1c6c48e8350e311ac630bf7e4553a36d79f74f6e26eaf3ac1036c27c5397"
+    },
+    "it_case_stats": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Constitutional case-law index coverage and freshness (totals, years, last build).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_case_stats",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "by_tipologia": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "dataset_note": {
+              "default": "Source: Corte Costituzionale official open data (dati.cortecostituzionale.it) - every decision since 1956, ECLI-native, public for reuse. This is a LOCAL index, provisioned automatically on first use (a sha256-verified pre-built index or a build from the open data) and cached under ~/.matematic; see 'provenance'/'ingested_at' in it_case_stats for freshness, and run 'italy-eli-mcp-caselaw-ingest' to refresh. Scope: the Italian Constitutional Court only - not the Corte di Cassazione or administrative courts.",
+              "type": "string"
+            },
+            "ingested_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "total": {
+              "type": "integer"
+            },
+            "year_max": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "year_min": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "total"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "381e170bd3a8841d95aec7040697d8423003050e9a8adaf3c77de04c024b128e"
+    },
+    "it_cassazione_get": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Fetch the full text of one Corte di Cassazione decision, live, by its SentenzeWeb id.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "sic_id": {
+              "description": "the SentenzeWeb ``id`` (e.g. \"snciv2024D01234O\"), as returned by\n``it_cassazione_search`` hits.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "sic_id"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_cassazione_get",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "data_decisione": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "data_deposito": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "dataset_note": {
+              "default": "Source: Corte Suprema di Cassazione, SentenzeWeb (live public Solr search, italgiure.giustizia.it/sncass) - full OCR text, 420K+ decisions (civil + criminal, including the Labour and Tax sub-chambers). Italian Open Data License (IODL 2.0), no authentication. This is NOT the subscription-gated ItalgiureWeb full-database search used by the judiciary; it is the Court's own free public search engine, queried live on every call (no local index to build or refresh).",
+              "type": "string"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "massima": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "materia": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "numdec": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "presidente": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "relatore": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "sic_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "testo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "tipoprov": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "type": "object"
+        }
+      },
+      "sha256": "40c42d42dd73dbfed571a2cd9820640f7f90d4207302a9a2350fa776cb0cc0e8"
+    },
+    "it_cassazione_search": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Full-text search of Corte di Cassazione (Supreme Court) decisions, live.\n\nQueries SentenzeWeb (the Court's own free public search engine) in real time -\nno local index. Free-text search matches the decision body (``ocr``).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional 4-digit year filter (decision year, e.g. \"2021\")."
+            },
+            "chamber": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional, \"civile\" (civil) or \"penale\" (criminal)."
+            },
+            "limit": {
+              "default": 20,
+              "description": "max hits (1..100).",
+              "type": "integer"
+            },
+            "query": {
+              "description": "search terms, matched as a phrase against the decision text.",
+              "type": "string"
+            },
+            "sub_chamber": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional, \"lavoro\" (Labour) or \"tributaria\" (Tax) - both are\nsub-chambers of the civil section."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_cassazione_search",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "dataset_note": {
+              "default": "Source: Corte Suprema di Cassazione, SentenzeWeb (live public Solr search, italgiure.giustizia.it/sncass) - full OCR text, 420K+ decisions (civil + criminal, including the Labour and Tax sub-chambers). Italian Open Data License (IODL 2.0), no authentication. This is NOT the subscription-gated ItalgiureWeb full-database search used by the judiciary; it is the Court's own free public search engine, queried live on every call (no local index to build or refresh).",
+              "type": "string"
+            },
+            "hits": {
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "anno": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "data_decisione": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "data_deposito": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "materia": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "numdec": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "sic_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "snippet": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "source_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tipoprov": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "query": {
+              "type": "string"
+            },
+            "total_found": {
+              "type": "integer"
+            },
+            "total_returned": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query",
+            "total_found",
+            "total_returned"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "8c8877d0acd3304824d11ed576a8ae271ace0ca6da4720bb7caf5046ff960b63"
+    },
+    "it_coverage": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Declare what this connector covers, how it is sourced, and what it does NOT cover.\n\nCall this before telling a user that the law \"does not contain\" something, and whenever\na search comes back empty: the absence may be a gap in this connector rather than in the\nlaw. Every gap carries a fallback saying where to look instead.\n\nReturns:\n    ``Coverage`` with families, an as-of note, and a non-empty list of known gaps.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_coverage",
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "What this connector covers, how it is sourced, and what it does not cover.",
+          "properties": {
+            "as_of_note": {
+              "description": "States what the dates mean, and what they do not promise.",
+              "type": "string"
+            },
+            "families": {
+              "items": {
+                "additionalProperties": true,
+                "description": "One data family this connector exposes.",
+                "properties": {
+                  "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Date this family was last captured (ISO). None when queried live."
+                  },
+                  "live": {
+                    "default": true,
+                    "description": "True when queried live instead of from a snapshot.",
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "description": "Data family, e.g. 'Federal legislation'.",
+                    "type": "string"
+                  },
+                  "source": {
+                    "description": "Official source the data comes from.",
+                    "type": "string"
+                  },
+                  "tool": {
+                    "description": "Tool or tools that reach this family.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "tool",
+                  "source"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "known_gaps": {
+              "description": "Never empty. An empty list would mean 'not checked', not 'no gaps'.",
+              "items": {
+                "additionalProperties": true,
+                "description": "A known, named hole in this connector's coverage - plus the way around it.",
+                "properties": {
+                  "fallback": {
+                    "description": "Where to go instead.",
+                    "type": "string"
+                  },
+                  "family": {
+                    "description": "Which family the gap belongs to.",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "Stable gap identifier.",
+                    "type": "string"
+                  },
+                  "missing": {
+                    "description": "What is NOT available through this connector.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "family",
+                  "missing",
+                  "fallback"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "status": {
+              "default": "ok",
+              "enum": [
+                "ok",
+                "degraded",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "as_of_note"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "b2e602737d7b7d4fc71636d7e07b51905caa14cb1a333176f86800a64f5dbdfc"
+    },
+    "it_ga_get_decision": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Fetch the full text of one administrative decision, live, by its document URL.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "document_url": {
+              "description": "the ``document_url`` of an ``it_ga_search`` hit, verbatim\n(an ``https://mdp.giustizia-amministrativa.it/visualizza/?...`` URL).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_url"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_ga_get_decision",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "data_pubblicazione": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "dataset_note": {
+              "default": "Source: Giustizia Amministrativa (www.giustizia-amministrativa.it), the official public decision search of the Italian administrative jurisdiction - Consiglio di Stato (501K+ provvedimenti), C.G.A.R.S. (53K+) and the 29 regional TAR seats (3.4M+ portal-wide), queried live, keyless, on every call. Search hits carry the court's NATIVE ECLI; full texts are the portal's own GA XML. Italian official legal texts are outside copyright (art. 5, l. 633/1941). This connector relays individual decisions on request; it does not bulk-harvest. The portal's year filter is applied client-side (see tool docs); total_found is the upstream, year-unfiltered total.",
+              "type": "string"
+            },
+            "document_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "ecli": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "nrg_anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "nrg_numero": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "numero": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "testo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "tipologia": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "urn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "type": "object"
+        }
+      },
+      "sha256": "d7f45e09587e12ca9bf8d4b3fd40400488ed6409392d11ef44063887dff6ca08"
+    },
+    "it_ga_search": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Search Italian administrative case law (Consiglio di Stato, C.G.A.R.S., TAR), live.\n\nQueries the Giustizia Amministrativa portal's own public decision search in\nreal time - one backend for the whole administrative jurisdiction (3.4M+\nprovvedimenti). Provide a full-text ``query``, a decision ``numero``, or both.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "anno": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional 4-digit publication year. Applied CLIENT-SIDE over the\nreturned page (the portal's year field is a no-op upstream);\n``total_found`` stays the upstream, year-unfiltered total."
+            },
+            "limit": {
+              "default": 20,
+              "description": "max hits (1..60; the portal serves pages of 20/40/60, newest first).",
+              "type": "integer"
+            },
+            "numero": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional decision number (1-5 digits) for an exact lookup.\nFilters server-side; combine with ``anno`` + ``sede`` to pin one\ndecision."
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "full-text search terms, matched against the decision text."
+            },
+            "sede": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional court seat - \"Consiglio di Stato\", \"C.G.A.R.S\", or a TAR\nseat city (\"Roma\", \"Milano\", \"Napoli\", ...). Filters server-side."
+            },
+            "tipo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "optional - \"sentenza\", \"ordinanza\", \"decreto\", \"parere\",\n\"plenaria\" (Adunanza Plenaria). Filters server-side."
+            }
+          },
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_ga_search",
+        "outputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "dataset_note": {
+              "default": "Source: Giustizia Amministrativa (www.giustizia-amministrativa.it), the official public decision search of the Italian administrative jurisdiction - Consiglio di Stato (501K+ provvedimenti), C.G.A.R.S. (53K+) and the 29 regional TAR seats (3.4M+ portal-wide), queried live, keyless, on every call. Search hits carry the court's NATIVE ECLI; full texts are the portal's own GA XML. Italian official legal texts are outside copyright (art. 5, l. 633/1941). This connector relays individual decisions on request; it does not bulk-harvest. The portal's year filter is applied client-side (see tool docs); total_found is the upstream, year-unfiltered total.",
+              "type": "string"
+            },
+            "hits": {
+              "items": {
+                "additionalProperties": true,
+                "properties": {
+                  "anno": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "document_format": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "document_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "ecli": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "numero": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "numero_provvedimento": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "numero_ricorso": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "sede": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "sezione": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "snippet": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "source_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "tipo": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "total_found": {
+              "type": "integer"
+            },
+            "total_returned": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "total_found",
+            "total_returned"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "c15dc7521ad29681353bab5f9d7c0a00a6814fa06cd955cab8a4a7954fedc288"
+    },
+    "it_get_act": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Fetch act metadata from Normattiva.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "reference": {
+              "description": "a code name (\"codice civile\"), a URN\n(\"urn:nir:stato:legge:1990-08-07;241\"), an ELI path\n(\"eli/id/1990/08/18/090G0294\"), or a normattiva.it URL.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reference"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_get_act",
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "Act metadata - result of ``it_get_act``.",
+          "properties": {
+            "article_count": {
+              "default": 0,
+              "type": "integer"
+            },
+            "dataset_note": {
+              "default": "Source: Normattiva (Ministero della Giustizia / Istituto Poligrafico e Zecca dello Stato). Italian official legal texts are outside copyright (art. 5 l. 633/1941); Normattiva additionally declares CC-BY-4.0 for its data (from 2026-01-01). Text is the consolidated (multivigenza) version as in force today unless 'at_date' is given. Bulk reuse of the database is restricted by Normattiva's terms - this connector relays individual acts on request, with attribution and a source_url.",
+              "type": "string"
+            },
+            "doc_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "eli_uri": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "human_readable_citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "source_url": {
+              "type": "string"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "urn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "source_url"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "17d85ca29d86ede65ac5864b96c9c4fe6791922f954fb96cdfc37f7a21455c95"
+    },
+    "it_get_text": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Fetch the text of a whole act or a single article.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "article": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "an article number (\"2043\", \"art. 2043\", \"2043-bis\"). Omit for the whole act."
+            },
+            "at_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "ISO date (\"2020-01-01\") for the point-in-time (multivigenza) version;\nomit for the version in force today (consolidated)."
+            },
+            "format": {
+              "default": "text",
+              "description": "``\"text\"`` (extracted, whitespace-normalized) or ``\"akn_xml\"`` (raw\nAkoma Ntoso; only valid for the whole act).",
+              "enum": [
+                "text",
+                "akn_xml"
+              ],
+              "type": "string"
+            },
+            "reference": {
+              "description": "a code name, URN, ELI path, or normattiva.it URL.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reference"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_get_text",
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "Result of ``it_get_text`` - full act or a single article.",
+          "properties": {
+            "article": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "article_count": {
+              "default": 0,
+              "type": "integer"
+            },
+            "article_heading": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "article_num": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "at_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "byte_size": {
+              "default": 0,
+              "type": "integer"
+            },
+            "content": {
+              "default": "",
+              "type": "string"
+            },
+            "dataset_note": {
+              "default": "Source: Normattiva (Ministero della Giustizia / Istituto Poligrafico e Zecca dello Stato). Italian official legal texts are outside copyright (art. 5 l. 633/1941); Normattiva additionally declares CC-BY-4.0 for its data (from 2026-01-01). Text is the consolidated (multivigenza) version as in force today unless 'at_date' is given. Bulk reuse of the database is restricted by Normattiva's terms - this connector relays individual acts on request, with attribution and a source_url.",
+              "type": "string"
+            },
+            "eli_uri": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "format": {
+              "default": "text",
+              "enum": [
+                "text",
+                "akn_xml"
+              ],
+              "type": "string"
+            },
+            "human_readable_citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "source_url": {
+              "type": "string"
+            },
+            "urn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "source_url"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "fa08a82146cd2c7d50d39738282a70e78cc16c675fd3b11c33121c6e1b397b66"
+    },
+    "it_list_codes": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "List the major Italian codes and consolidated acts with their canonical URN.\n\nA curated, verified dictionary (Codice civile/penale/procedura, Codice privacy,\nCAD, D.Lgs. 231/2001, Costituzione, L. 241/1990). Feed any ``urn`` to\n``it_get_act`` / ``it_get_text``.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_list_codes",
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "items": {
+                "additionalProperties": true,
+                "description": "An entry in the curated codes dictionary.",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "urn": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "urn",
+                  "label"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "type": "object",
+          "x-fastmcp-wrap-result": true
+        }
+      },
+      "sha256": "bb0beaf709f8923f283490e62cac85e49423e8bb4e826088f17a2ee6e4760864"
+    },
+    "it_resolve": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Build a canonical, resolvable URN:NIR from act coordinates.\n\nOffline (no network). ``act_type`` accepts friendly forms ('legge', 'd.lgs',\n'dpr', 'regio.decreto'). With only ``year`` + ``number`` the partial URN still\nresolves on Normattiva; add ``month``/``day`` for the exact promulgation date.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "query": {
+              "additionalProperties": true,
+              "description": "``ResolveQuery`` (act_type, year, number, month?, day?, authority).",
+              "properties": {
+                "act_type": {
+                  "description": "e.g. 'legge', 'decreto.legislativo', 'dpr', 'regio.decreto'",
+                  "type": "string"
+                },
+                "authority": {
+                  "default": "stato",
+                  "type": "string"
+                },
+                "day": {
+                  "anyOf": [
+                    {
+                      "maximum": 31,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "month": {
+                  "anyOf": [
+                    {
+                      "maximum": 12,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "year": {
+                  "maximum": 2100,
+                  "minimum": 1861,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "act_type",
+                "year"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_resolve",
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "Result of ``it_resolve`` - a constructed, resolvable identifier.",
+          "properties": {
+            "human_readable_citation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "note": {
+              "default": "URN built from coordinates and resolvable on normattiva.it. Call it_get_act for the ELI and metadata, or it_get_text for the text.",
+              "type": "string"
+            },
+            "source_url": {
+              "type": "string"
+            },
+            "urn": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "urn",
+            "source_url"
+          ],
+          "type": "object"
+        }
+      },
+      "sha256": "d85f369a756711b76540ef6bcca78328e1d30d4d2ad0ea023b44024871034378"
+    },
+    "it_verify_citations": {
+      "descriptor": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        },
+        "description": "Verify Italian legal citations found in a text against their real sources.\n\nExtracts statute citations (\"art. 2043 c.c.\", \"art. 5 della legge 241/1990\",\n\"artt. 1341 e 1342 c.c.\", commi) and ECLIs, then checks each: statutes\nagainst the live Normattiva act (does the act resolve? does the article\nexist?), ECLI:IT:COST against the local Constitutional Court index. A\nparenthetical description right after a citation is content-checked with a\ntrigram match (mismatch = review signal). Non-existent articles come back\nwith a range hint of what DOES exist.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_citations": {
+              "default": 15,
+              "description": "cap on citations to verify (1..30, default 15).",
+              "type": "integer"
+            },
+            "text": {
+              "description": "the text to verify (an LLM answer, a memo, a contract clause).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        "meta": {
+          "fastmcp": {
+            "tags": []
+          }
+        },
+        "name": "it_verify_citations",
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "Result of ``it_verify_citations``.",
+          "properties": {
+            "citations": {
+              "items": {
+                "additionalProperties": true,
+                "description": "Verification outcome for one citation found in the input text.",
+                "properties": {
+                  "act_reference": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Act Reference"
+                  },
+                  "article": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Article"
+                  },
+                  "claim": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Claim"
+                  },
+                  "comma": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Comma"
+                  },
+                  "content_match": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "description": "Trigram comparison of a claimed description against the real provision.",
+                        "properties": {
+                          "matched": {
+                            "title": "Matched",
+                            "type": "boolean"
+                          },
+                          "method": {
+                            "enum": [
+                              "exact",
+                              "trigram-jaccard",
+                              "trigram-overlap"
+                            ],
+                            "title": "Method",
+                            "type": "string"
+                          },
+                          "score": {
+                            "title": "Score",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "matched",
+                          "method",
+                          "score"
+                        ],
+                        "title": "ContentMatch",
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "detail": {
+                    "title": "Detail",
+                    "type": "string"
+                  },
+                  "human_readable_citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Human Readable Citation"
+                  },
+                  "kind": {
+                    "enum": [
+                      "statute",
+                      "constitutional_caselaw",
+                      "caselaw_other"
+                    ],
+                    "title": "Kind",
+                    "type": "string"
+                  },
+                  "range_hint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Range Hint"
+                  },
+                  "raw": {
+                    "title": "Raw",
+                    "type": "string"
+                  },
+                  "source_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Source Url"
+                  },
+                  "status": {
+                    "enum": [
+                      "verified",
+                      "not_found",
+                      "content_mismatch",
+                      "unverified"
+                    ],
+                    "title": "Status",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "raw",
+                  "kind",
+                  "status",
+                  "detail"
+                ],
+                "title": "CitationCheck",
+                "type": "object"
+              },
+              "title": "Citations",
+              "type": "array"
+            },
+            "dataset_note": {
+              "default": "Source: Normattiva (Ministero della Giustizia / Istituto Poligrafico e Zecca dello Stato). Italian official legal texts are outside copyright (art. 5 l. 633/1941); Normattiva additionally declares CC-BY-4.0 for its data (from 2026-01-01). Text is the consolidated (multivigenza) version as in force today unless 'at_date' is given. Bulk reuse of the database is restricted by Normattiva's terms - this connector relays individual acts on request, with attribution and a source_url.",
+              "title": "Dataset Note",
+              "type": "string"
+            },
+            "failed_count": {
+              "title": "Failed Count",
+              "type": "integer"
+            },
+            "gaps": {
+              "items": {
+                "additionalProperties": true,
+                "description": "An explicit incompleteness of the verification - never hidden in prose.",
+                "properties": {
+                  "citation": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Citation"
+                  },
+                  "gap_type": {
+                    "enum": [
+                      "out_of_corpus",
+                      "unparseable_citation",
+                      "act_unresolvable",
+                      "upstream_unavailable",
+                      "comma_not_checkable"
+                    ],
+                    "title": "Gap Type",
+                    "type": "string"
+                  },
+                  "note": {
+                    "title": "Note",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "gap_type",
+                  "note"
+                ],
+                "title": "VerificationGap",
+                "type": "object"
+              },
+              "title": "Gaps",
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "VERIFIED",
+                "PARTIAL_VERIFIED",
+                "HALLUCINATION_DETECTED",
+                "NO_CITATIONS_FOUND"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "summary": {
+              "title": "Summary",
+              "type": "string"
+            },
+            "total": {
+              "title": "Total",
+              "type": "integer"
+            },
+            "verified_count": {
+              "title": "Verified Count",
+              "type": "integer"
+            },
+            "warning_count": {
+              "title": "Warning Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "status",
+            "summary",
+            "total",
+            "verified_count",
+            "failed_count",
+            "warning_count"
+          ],
+          "title": "CitationVerificationResult",
+          "type": "object"
+        }
+      },
+      "sha256": "e928ae968c66cda940db62dc6de0fbecc073b5eae1876611a42ab74183de4eaa"
+    }
+  },
+  "toolset_sha256": "e7faae251acccf6a461c42b13bfa5599e6f9023a708a0c80075f420236a50db5"
+}
