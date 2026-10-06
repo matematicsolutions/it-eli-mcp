@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin-marketplace.json",
+  "name": "it-eli-mcp",
+  "description": "One plugin: Italian law with verifiable citations.",
+  "owner": {
+    "name": "Wieslaw Mazur / MateMatic Solutions",
+    "url": "https://matematicsolutions.com"
+  },
+  "plugins": [
+    {
+      "name": "it-eli-mcp",
+      "description": "Italian legislation (Normattiva), Constitutional Court, Cassation and administrative case law with official identifiers.",
+      "version": "0.7.3",
+      "author": {
+        "name": "Wieslaw Mazur / MateMatic Solutions"
+      },
+      "license": "Apache-2.0",
+      "source": "./plugin"
+    }
+  ]
+}

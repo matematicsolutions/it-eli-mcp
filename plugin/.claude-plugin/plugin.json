@@ -1,0 +1,42 @@
+{
+  "name": "it-eli-mcp",
+  "description": "Italian law with verifiable citations: legislation from Normattiva (Akoma Ntoso, URN:NIR and ELI, point-in-time text), Constitutional Court decisions from the Court's official open data (ECLI), Court of Cassation decisions via the Court's public SentenzeWeb search, and administrative case law (Consiglio di Stato, CGARS, TAR) via the Giustizia Amministrativa portal, plus a citation checker. Every answer carries the official source and identifier, so a citation can be checked instead of trusted. Queries go only to these official Italian sources; nothing goes to MateMatic.",
+  "version": "0.7.3",
+  "author": {
+    "name": "Wieslaw Mazur / MateMatic Solutions"
+  },
+  "homepage": "https://matematicsolutions.com/en/boutique/connectors",
+  "repository": "https://github.com/matematicsolutions/it-eli-mcp",
+  "documentationUrl": "https://github.com/matematicsolutions/it-eli-mcp/tree/main/plugin#readme",
+  "supportUrl": "https://github.com/matematicsolutions/it-eli-mcp/issues",
+  "privacyPolicyUrl": "https://github.com/matematicsolutions/it-eli-mcp/tree/main/plugin#data",
+  "termsOfServiceUrl": "https://github.com/matematicsolutions/it-eli-mcp/blob/main/LICENSE",
+  "license": "Apache-2.0",
+  "keywords": [
+    "legal",
+    "italy",
+    "italian",
+    "law",
+    "legislation",
+    "case-law",
+    "ecli",
+    "citations",
+    "mcp"
+  ],
+  "mcpServers": {
+    "it-eli-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--frozen",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}/server",
+        "italy-eli-mcp"
+      ],
+      "env": {
+        "IT_ELI_CASELAW_INDEX_URL": "https://github.com/matematicsolutions/it-eli-mcp/releases/download/v0.7.3/cost.sqlite.gz",
+        "IT_ELI_CASELAW_INDEX_SHA256": "66fc3c36437859ee6ae9cda6c25082b89da66bded40dbb5216e0006305869de6"
+      }
+    }
+  }
+}

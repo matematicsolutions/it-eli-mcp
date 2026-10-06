@@ -179,6 +179,16 @@ it_cassazione_get(sic_id="snciv2025224393O")
 
 ## Install
 
+As a Claude plugin (Claude Code or the desktop app, needs [uv](https://docs.astral.sh/uv/));
+see [plugin/README.md](plugin/README.md) for what it sends and stores:
+
+```
+/plugin marketplace add matematicsolutions/it-eli-mcp
+/plugin install it-eli-mcp@it-eli-mcp
+```
+
+As a standalone server, from PyPI (`uvx italy-eli-mcp`), or from source:
+
 ```bash
 cd it-eli-mcp
 pip install -e .
