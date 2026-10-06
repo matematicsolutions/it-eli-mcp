@@ -34,8 +34,7 @@
         "italy-eli-mcp"
       ],
       "env": {
-        "IT_ELI_CASELAW_INDEX_URL": "https://github.com/matematicsolutions/it-eli-mcp/releases/download/v0.7.3/cost.sqlite.gz",
-        "IT_ELI_CASELAW_INDEX_SHA256": "66fc3c36437859ee6ae9cda6c25082b89da66bded40dbb5216e0006305869de6"
+        "IT_ELI_CASELAW_INDEX_URL": "https://github.com/matematicsolutions/it-eli-mcp/releases/download/v0.7.3/cost.sqlite.gz"
       }
     }
   }

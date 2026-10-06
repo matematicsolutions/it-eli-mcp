@@ -27,7 +27,7 @@ The server runs on your machine. Each tool call sends your query to the official
 and to nothing else; nothing goes to MateMatic. Your query and the results also pass
 through whatever model you use, the same way as any other message.
 
-On the first Constitutional Court call the server downloads that local index once: a pre-built, compressed SQLite file (about 200 MB) of the Court's official open data, attached to this repository's GitHub release v0.7.3. The plugin pins that exact file and its SHA-256 in `plugin.json` (`IT_ELI_CASELAW_INDEX_URL`, `IT_ELI_CASELAW_INDEX_SHA256`), and the server refuses a file whose checksum does not match. If the download is not possible, it builds the index itself from the Court's open data at dati.cortecostituzionale.it. The request carries no query content.
+On the first Constitutional Court call the server downloads that local index once: a pre-built, compressed SQLite file (about 200 MB) of the Court's official open data, attached to this repository's GitHub release v0.7.3. The plugin pins that release in `plugin.json` (`IT_ELI_CASELAW_INDEX_URL`), and the server checks the file against the SHA-256 published with the same release and refuses one that does not match. If the download is not possible, it builds the index itself from the Court's open data at dati.cortecostituzionale.it. The request carries no query content.
 
 Three things are written locally, in your home directory:
 
