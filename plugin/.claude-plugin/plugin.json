@@ -25,13 +25,9 @@
   ],
   "mcpServers": {
     "it-eli-mcp": {
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "run",
-        "--frozen",
-        "--project",
-        "${CLAUDE_PLUGIN_ROOT}/server",
-        "italy-eli-mcp"
+        "italy-eli-mcp==0.7.3"
       ],
       "env": {
         "IT_ELI_CASELAW_INDEX_URL": "https://github.com/matematicsolutions/it-eli-mcp/releases/download/v0.7.3/cost.sqlite.gz"

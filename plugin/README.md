@@ -2,8 +2,10 @@
 
 Italian law with verifiable citations, as a Claude plugin. It runs the
 [it-eli-mcp](https://github.com/matematicsolutions/it-eli-mcp) MCP server, version 0.7.3
-from PyPI (PyPI package `italy-eli-mcp`). `server/uv.lock` pins that package and every dependency with hashes, and the
-plugin starts it with `uv run --frozen`, so it runs exactly what was reviewed. Every
+from PyPI (PyPI package `italy-eli-mcp`). `uv.lock`, next to the manifest, pins that package and every dependency with
+hashes. The plugin starts it with `uvx italy-eli-mcp==0.7.3`, and Claude Code's locked launch
+installs exactly the set in `uv.lock`, so it runs what was reviewed. (Run by hand outside
+Claude Code, plain `uvx` resolves the dependency ranges from PyPI instead.) Every
 answer carries the official source, so a citation can be checked instead of trusted.
 
 What it covers: legislation from Normattiva (resolve a reference, act metadata and point-in-time text of an act or article), Constitutional Court decisions from a local full-text index of the Court's official open data, Court of Cassation decisions via SentenzeWeb (italgiure.giustizia.it), administrative decisions via the Giustizia Amministrativa portal, and a tool that checks the Italian citations in a text. The full tool list is in the
@@ -12,7 +14,7 @@ What it covers: legislation from Normattiva (resolve a reference, act metadata a
 ## Requirements
 
 Claude Code or the Claude desktop app, and [uv](https://docs.astral.sh/uv/) on your
-machine (it installs the locked packages on first start and runs the server).
+machine (its `uvx` installs the locked packages on first start and runs the server).
 
 ## Install
 
